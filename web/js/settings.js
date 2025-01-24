@@ -5,7 +5,7 @@ export const settingsHelper = new SettingsHelper("SyntaxHighlighting");
 const settingsDefinitions = [
     {
         name: "Textbox Colors",
-        category: ["SyntaxHighlighting", "Textbox", "TextboxColors"],
+        category: ["Syntax Highlighting", "Textbox", "TextboxColors"],
         defaultValue: "#559c22\n#229c57\n#229c8b\n#226f9c\n#22479c",
         tooltip: "A list of either rgb or hex colors, one color per line.",
         type: SettingsHelper.ST.MULTILINE,
@@ -13,7 +13,7 @@ const settingsDefinitions = [
     },
     {
         name: "Textbox Highlight Type",
-        category: ["SyntaxHighlighting", "Textbox", "TextboxHighlightType"],
+        category: ["Syntax Highlighting", "Textbox", "TextboxHighlightType"],
         defaultValue: "strength",
         tooltip:
             "If strength, only the first and last colors will be used. If nesting, all colors will be used.",
@@ -25,7 +25,7 @@ const settingsDefinitions = [
     },
     {
         name: "Favorite On Top",
-        category: ["SyntaxHighlighting", "Combo", "FavoriteOnTop"],
+        category: ["Syntax Highlighting", "Combo", "FavoriteOnTop"],
         defaultValue: true,
         tooltip: "Put favorite items over all other items.",
         type: SettingsHelper.ST.BOOLEAN,
@@ -33,14 +33,14 @@ const settingsDefinitions = [
     },
     {
         name: "Combo Highlight Color",
-        category: ["SyntaxHighlighting", "Combo", "ComboHighlightColor"],
+        category: ["Syntax Highlighting", "Combo", "ComboHighlightColor"],
         defaultValue: "#008000",
         type: SettingsHelper.ST.COLORPICKER,
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
         name: "Preview Image Delay",
-        category: ["SyntaxHighlighting", "Preview Image", "PreviewImageDelay"],
+        category: ["Syntax Highlighting", "Preview Image", "PreviewImageDelay"],
         defaultValue: 200,
         type: SettingsHelper.ST.SLIDER(0, 1000, 1),
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
@@ -48,7 +48,7 @@ const settingsDefinitions = [
     {
         name: "Preview Image Padding",
         category: [
-            "SyntaxHighlighting",
+            "Syntax Highlighting",
             "Preview Image",
             "PreviewImagePadding",
         ],
@@ -58,7 +58,7 @@ const settingsDefinitions = [
     },
     {
         name: "Preview Image Side",
-        category: ["SyntaxHighlighting", "Preview Image", "PreviewImageSide"],
+        category: ["Syntax Highlighting", "Preview Image", "PreviewImageSide"],
         defaultValue: "left",
         type: SettingsHelper.ST.COMBO(
             { text: "Left", value: "left" },
@@ -68,7 +68,7 @@ const settingsDefinitions = [
     },
     {
         name: "Preview Image Size",
-        category: ["SyntaxHighlighting", "Preview Image", "PreviewImageSize"],
+        category: ["Syntax Highlighting", "Preview Image", "PreviewImageSize"],
         defaultValue: 300,
         type: SettingsHelper.ST.SLIDER(100, 1000, 10),
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
