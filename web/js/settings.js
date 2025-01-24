@@ -39,7 +39,7 @@ const settingsDefinitions = [
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
-        name: "Preview Image Delay",
+        name: "Preview Image Hover Delay",
         category: ["Syntax Highlighting", "Preview Image", "PreviewImageDelay"],
         defaultValue: 200,
         type: SettingsHelper.ST.SLIDER(0, 1000, 1),

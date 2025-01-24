@@ -144,7 +144,7 @@ async function addStarsToFavourited(
     previewImages,
     settings
 ) {
-    const hoverDelay = settings["Preview Image Delay"];
+    const hoverDelay = settings["Preview Image Hover Delay"];
     const root = document.documentElement;
     const comfyMenuBgColor = hexToRgb(
         getComputedStyle(root).getPropertyValue("--comfy-menu-bg").trim()
@@ -296,7 +296,7 @@ async function observeContextMenu(existingList) {
         "Preview Image Padding",
         "Preview Image Side",
         "Preview Image Size",
-        "Preview Image Delay",
+        "Preview Image Hover Delay",
         "Favorite On Top"
     );
     const favoriteColor = settings["Combo Highlight Color"];
