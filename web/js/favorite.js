@@ -306,7 +306,7 @@ async function observeContextMenu(existingList) {
             opacity: 0;
         }
 
-        .litegraph.litecontextmenu .litemenu-entry.submenu, .litegraph.litecontextmenu.dark .litemenu-entry.litemenu-entry-custom {
+        .litegraph.litecontextmenu.dark .litemenu-entry.litemenu-entry-custom {
             background-color: ${favoriteColor} !important;
             display: flex;
             align-items: center;
