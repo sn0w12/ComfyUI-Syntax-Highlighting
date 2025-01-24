@@ -21,6 +21,8 @@ Syntax highlighting and other quality of life improvements for ComfyUI.
 
 To get preview images, you have to put them in `../ComfyUI/custom_nodes/ComfyUI-Syntax-Highlighting/web/images`. The name of the image must match the name of the combo value exactly (except the file extension).
 
+To favorite the currently selected combo value, right click the node and click `favorite [name]`, if there are several combo inputs, it will be a submenu with all favorite options inside it.
+
 ## Settings
 
 | Setting Name              | Type                     | Description                                                                                           |
