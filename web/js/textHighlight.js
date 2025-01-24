@@ -484,24 +484,24 @@ async function syncText(inputEl, overlayEl, tries = 1) {
     });
 
     // Highlight duplicate tags
-    highlightedText
+    const segments = highlightedText
         .split(/(,)/)
-        .map((segment) => {
-            if (segment === ",") {
-                return segment;
-            }
+        .filter((s) => s !== ",")
+        .map((s) => s.trim());
+    const exactDuplicates = segments.filter(
+        (item, index) => segments.indexOf(item) !== index
+    );
 
-            const trimmedSegment = processTag(segment);
-
-            // Check for duplicates
-            if (tagCounts.get(trimmedSegment) > 1) {
-                highlightedText = highlightedText.replaceAll(
-                    trimmedSegment,
-                    `<span style="background-color: ${errorColor};">${trimmedSegment}</span>`
-                );
-            }
-        })
-        .join("");
+    exactDuplicates.forEach((duplicate) => {
+        if (duplicate) {
+            const regex = new RegExp(`(^|,\\s*)${duplicate}(?=,|$)`, "g");
+            highlightedText = highlightedText.replace(
+                regex,
+                (match, prefix) =>
+                    `${prefix}<span style="background-color: ${errorColor};">${duplicate}</span>`
+            );
+        }
+    });
 
     overlayEl.innerHTML = highlightedText;
 }
