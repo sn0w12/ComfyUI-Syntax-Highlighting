@@ -3,13 +3,13 @@ import { hexToRgb, leadingEdgeDebounce } from "./util.js";
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 
-const settingsHelper = new SettingsHelper("SyntaxHighlighter");
+const settingsHelper = new SettingsHelper("SyntaxHighlighting");
 let contextMenuObserver = null;
 
 async function toggleFavourite(
     existingList,
     filename,
-    setting = "SyntaxHighlighter.favorites"
+    setting = "SyntaxHighlighting.favorites"
 ) {
     try {
         // Check if the filename is already in the list
@@ -31,10 +31,10 @@ async function toggleFavourite(
 }
 
 app.registerExtension({
-    name: "SyntaxHighlighter.ToggleFavorite",
+    name: "SyntaxHighlighting.ToggleFavorite",
     async setup() {
         let existingList = await settingsHelper.getSettingById(
-            "SyntaxHighlighter.favorites"
+            "SyntaxHighlighting.favorites"
         );
         if (!Array.isArray(existingList)) {
             existingList = [];
@@ -66,7 +66,7 @@ app.registerExtension({
                             toggleFavourite(
                                 existingList,
                                 filename,
-                                "SyntaxHighlighter.favorites"
+                                "SyntaxHighlighting.favorites"
                             );
                         },
                         originalValue: value,
@@ -277,7 +277,7 @@ async function addStarsToFavourited(
 
 async function initializeContextMenuObserver() {
     let existingList = await settingsHelper.getSettingById(
-        "SyntaxHighlighter.favorites"
+        "SyntaxHighlighting.favorites"
     );
     if (!Array.isArray(existingList)) {
         existingList = [];

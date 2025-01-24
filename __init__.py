@@ -6,7 +6,7 @@ from server import PromptServer
 from aiohttp import web
 
 WEB_DIRECTORY = "./web"
-API_PREFIX = "/SyntaxHighlighter"
+API_PREFIX = "/SyntaxHighlighting"
 
 
 def index_images():
