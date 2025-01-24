@@ -5,6 +5,7 @@ import { api } from "../../../scripts/api.js";
 
 const menuCache = new Map();
 const settingsHelper = new SettingsHelper("SyntaxHighlighter");
+let contextMenuObserver = null;
 
 async function toggleFavourite(
     existingList,
@@ -94,7 +95,8 @@ app.registerExtension({
             return options;
         };
 
-        observeContextMenu(existingList);
+        initializeContextMenuObserver();
+        settingsHelper.addReloadSettingsListener(initializeContextMenuObserver);
     },
 });
 
@@ -245,15 +247,32 @@ async function addStarsToFavourited(
         }
     });
 
-    // Remove all entries
-    menuEntries.forEach((entry) => entry.remove());
+    if (settings["Favorite On Top"]) {
+        // Remove all entries
+        menuEntries.forEach((entry) => entry.remove());
 
-    // Add entries in order: none (if exists), starred, unstarred
-    if (noneEntry) {
-        menuContainer.appendChild(noneEntry);
+        // Add entries in order: none (if exists), starred, unstarred
+        if (noneEntry) {
+            menuContainer.appendChild(noneEntry);
+        }
+        starredEntries.forEach((entry) => menuContainer.appendChild(entry));
+        unstarredEntries.forEach((entry) => menuContainer.appendChild(entry));
     }
-    starredEntries.forEach((entry) => menuContainer.appendChild(entry));
-    unstarredEntries.forEach((entry) => menuContainer.appendChild(entry));
+}
+
+async function initializeContextMenuObserver() {
+    let existingList = await settingsHelper.getSettingById(
+        "SyntaxHighlighter.favorites"
+    );
+    if (!Array.isArray(existingList)) {
+        existingList = [];
+    }
+
+    if (contextMenuObserver) {
+        contextMenuObserver.disconnect();
+    }
+
+    contextMenuObserver = await observeContextMenu(existingList);
 }
 
 async function observeContextMenu(existingList) {
@@ -262,7 +281,8 @@ async function observeContextMenu(existingList) {
         "Preview Image Padding",
         "Preview Image Side",
         "Preview Image Size",
-        "Preview Image Delay"
+        "Preview Image Delay",
+        "Favorite On Top"
     );
     const favoriteColor = settings["Combo Highlight Color"];
     const brighterFavoriteColor = brightenColor(favoriteColor);
@@ -355,6 +375,8 @@ async function observeContextMenu(existingList) {
         characterData: false,
         subtree: true,
     });
+
+    return observer;
 }
 
 async function addPreviewImage(entry, path, settings) {

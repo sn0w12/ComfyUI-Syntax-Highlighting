@@ -24,6 +24,14 @@ const settingsDefinitions = [
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
+        name: "Favorite On Top",
+        category: ["SyntaxHighlighter", "Combo", "FavoriteOnTop"],
+        defaultValue: true,
+        tooltip: "Put favorite items over all other items.",
+        type: SettingsHelper.ST.BOOLEAN,
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
+    },
+    {
         name: "Combo Highlight Color",
         category: ["SyntaxHighlighter", "Combo", "ComboHighlightColor"],
         defaultValue: "#008000",
@@ -35,12 +43,14 @@ const settingsDefinitions = [
         category: ["SyntaxHighlighter", "Preview Image", "PreviewImageDelay"],
         defaultValue: 200,
         type: SettingsHelper.ST.SLIDER(0, 1000, 1),
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
         name: "Preview Image Padding",
         category: ["SyntaxHighlighter", "Preview Image", "PreviewImagePadding"],
         defaultValue: 20,
         type: SettingsHelper.ST.SLIDER(0, 100, 1),
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
         name: "Preview Image Side",
@@ -50,12 +60,14 @@ const settingsDefinitions = [
             { text: "Left", value: "left" },
             { text: "Right", value: "right" }
         ),
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
         name: "Preview Image Size",
         category: ["SyntaxHighlighter", "Preview Image", "PreviewImageSize"],
         defaultValue: 300,
         type: SettingsHelper.ST.SLIDER(100, 1000, 10),
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
 ];
 settingsHelper.addSettings(settingsDefinitions);
