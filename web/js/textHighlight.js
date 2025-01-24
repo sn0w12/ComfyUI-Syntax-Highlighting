@@ -214,16 +214,6 @@ function validateName(validFiles, name) {
     }
 }
 
-function processTags(tags) {
-    let returnArray = [];
-    tags.forEach((tag) => {
-        if (tag.trim()) {
-            returnArray.push(processTag(tag));
-        }
-    });
-    return returnArray;
-}
-
 function processTag(tag) {
     let trimmedTag = tag.trim();
 
@@ -235,10 +225,22 @@ function processTag(tag) {
         trimmedTag = trimmedTag.substring(1).trim();
     }
 
-    // Remove everything after a colon
-    const colonIndex = trimmedTag.indexOf(":");
-    if (colonIndex !== -1) {
-        trimmedTag = trimmedTag.substring(0, colonIndex).trim();
+    // Special handling for lora tags
+    if (trimmedTag.toLowerCase().startsWith("&lt;lora:")) {
+        const matches = trimmedTag.match(/:/g);
+        if (matches && matches.length >= 2) {
+            const secondColonIndex = trimmedTag.indexOf(
+                ":",
+                trimmedTag.indexOf(":") + 1
+            );
+            trimmedTag = trimmedTag.substring(0, secondColonIndex).trim();
+        }
+    } else {
+        // Remove everything after the first colon for non-lora tags
+        const colonIndex = trimmedTag.indexOf(":");
+        if (colonIndex !== -1) {
+            trimmedTag = trimmedTag.substring(0, colonIndex).trim();
+        }
     }
 
     return trimmedTag;
@@ -278,20 +280,6 @@ async function syncText(inputEl, overlayEl, tries = 1) {
     let lastIndex = 0;
     let spanStack = [];
     const uniqueIdMap = new Map();
-
-    const extractTags = (text) => {
-        let tags = text.split(",").map((tag) => tag.trim());
-        tags = processTags(tags);
-        const tagCounts = new Map();
-
-        tags.forEach((tag) => {
-            tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-        });
-
-        return { tags, tagCounts };
-    };
-
-    const { tags, tagCounts } = extractTags(text);
 
     /*
      * This loop iterates over each character in the `text` string to apply syntax highlighting and handle special cases.
@@ -484,10 +472,12 @@ async function syncText(inputEl, overlayEl, tries = 1) {
     });
 
     // Highlight duplicate tags
-    const segments = highlightedText
-        .split(/(,)/)
+    const strippedText = highlightedText.replace(/<[^>]+>/g, "");
+    const segments = strippedText
+        .split(",")
         .filter((s) => s !== ",")
-        .map((s) => s.trim());
+        .map((s) => processTag(s));
+
     const exactDuplicates = segments.filter(
         (item, index) => segments.indexOf(item) !== index
     );
