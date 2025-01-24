@@ -121,9 +121,13 @@ function brightenColor(color, brightenAmount = 15) {
     return `rgb(${brighterRgb[0]}, ${brighterRgb[1]}, ${brighterRgb[2]})`;
 }
 
-async function addStarsToFavourited(menuEntries, existingList, previewImages) {
-    const hoverDelay = settingsHelper.getSetting("Preview Image Delay");
-
+async function addStarsToFavourited(
+    menuEntries,
+    existingList,
+    previewImages,
+    settings
+) {
+    const hoverDelay = settings["Preview Image Delay"];
     const root = document.documentElement;
     const comfyMenuBgColor = hexToRgb(
         getComputedStyle(root).getPropertyValue("--comfy-menu-bg").trim()
@@ -168,6 +172,11 @@ async function addStarsToFavourited(menuEntries, existingList, previewImages) {
     const unstarredEntries = [];
 
     let hoverTimer;
+    menuContainer.addEventListener("mouseout", () => {
+        clearTimeout(hoverTimer);
+        removeAllPreviewImages();
+    });
+
     entriesToSort.forEach((entry) => {
         const value = entry.getAttribute("data-value");
         let filename = value;
@@ -196,7 +205,7 @@ async function addStarsToFavourited(menuEntries, existingList, previewImages) {
                 );
 
                 if (imageData) {
-                    addPreviewImage(entry, imageData.path);
+                    addPreviewImage(entry, imageData.path, settings);
                 }
             }, hoverDelay);
         });
@@ -248,9 +257,14 @@ async function addStarsToFavourited(menuEntries, existingList, previewImages) {
 }
 
 async function observeContextMenu(existingList) {
-    const favoriteColor = await settingsHelper.getSetting(
-        "Combo Highlight Color"
+    const settings = await settingsHelper.getMultipleSettings(
+        "Combo Highlight Color",
+        "Preview Image Padding",
+        "Preview Image Side",
+        "Preview Image Size",
+        "Preview Image Delay"
     );
+    const favoriteColor = settings["Combo Highlight Color"];
     const brighterFavoriteColor = brightenColor(favoriteColor);
 
     const style = document.createElement("style");
@@ -324,7 +338,12 @@ async function observeContextMenu(existingList) {
         if (litecontextmenu) {
             const menuEntries =
                 litecontextmenu.querySelectorAll(".litemenu-entry");
-            addStarsToFavourited(menuEntries, existingList, images.images);
+            addStarsToFavourited(
+                menuEntries,
+                existingList,
+                images.images,
+                settings
+            );
         }
     }, 100);
 
@@ -338,29 +357,44 @@ async function observeContextMenu(existingList) {
     });
 }
 
-function addPreviewImage(entry, path, maxHeight = 300, maxWidth = 300) {
+async function addPreviewImage(entry, path, settings) {
+    const padding = settings["Preview Image Padding"];
+    const preferredSide = settings["Preview Image Side"];
+    const maxSize = settings["Preview Image Size"];
+
     const preview = document.createElement("img");
     preview.className = "preview-image";
     preview.src = path;
-    preview.style.maxWidth = `${maxWidth}px`;
-    preview.style.maxHeight = `${maxHeight}px`;
+    preview.style.maxWidth = `${maxSize}px`;
+    preview.style.maxHeight = `${maxSize}px`;
     preview.style.position = "fixed";
 
     const rect = entry.getBoundingClientRect();
-    const padding = 20;
+    const extraRightPadding = 10;
+
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    if (rect.left >= maxWidth + padding) {
+    // Check if preferred side has enough space
+    const hasSpaceOnLeft = rect.left >= maxSize + padding;
+    const hasSpaceOnRight = rect.right + maxSize + padding <= viewportWidth;
+
+    if (preferredSide === "left" && hasSpaceOnLeft) {
         preview.style.right = `${viewportWidth - rect.left + padding}px`;
+    } else if (preferredSide === "right" && hasSpaceOnRight) {
+        preview.style.left = `${rect.right + padding + extraRightPadding}px`;
+    } else if (hasSpaceOnLeft) {
+        // Fallback to left if there's space
+        preview.style.right = `${viewportWidth - rect.left + padding}px`;
+    } else if (hasSpaceOnRight) {
+        // Fallback to right if there's space
+        preview.style.left = `${rect.right + padding + extraRightPadding}px`;
     } else {
-        preview.style.left = `${rect.right + padding}px`;
+        // If no space on either side, default to left
+        preview.style.right = `${viewportWidth - rect.left + padding}px`;
     }
 
-    const estimatedHeight = Math.min(
-        maxHeight,
-        preview.naturalHeight || maxHeight
-    );
+    const estimatedHeight = Math.min(maxSize, preview.naturalHeight || maxSize);
     let topPosition = rect.top;
 
     if (rect.top + estimatedHeight > viewportHeight - padding) {
@@ -375,17 +409,20 @@ function addPreviewImage(entry, path, maxHeight = 300, maxWidth = 300) {
     }, 100);
 }
 
+const removingImages = new WeakSet();
 function removeAllPreviewImages() {
     const previewImages = document.querySelectorAll(".preview-image");
+
     previewImages.forEach((img) => {
+        if (removingImages.has(img)) return;
+
+        removingImages.add(img);
         img.classList.add("fade-out");
         img.classList.remove("fade-in");
-        img.addEventListener(
-            "transitionend",
-            () => {
-                img.remove();
-            },
-            { once: true }
-        );
+
+        setTimeout(() => {
+            img.remove();
+            removingImages.delete(img);
+        }, 250);
     });
 }

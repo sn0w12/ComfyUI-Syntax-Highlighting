@@ -32,9 +32,30 @@ const settingsDefinitions = [
     },
     {
         name: "Preview Image Delay",
-        category: ["SyntaxHighlighter", "General", "PreviewImageDelay"],
+        category: ["SyntaxHighlighter", "Preview Image", "PreviewImageDelay"],
         defaultValue: 200,
         type: SettingsHelper.ST.SLIDER(0, 1000, 1),
+    },
+    {
+        name: "Preview Image Padding",
+        category: ["SyntaxHighlighter", "Preview Image", "PreviewImagePadding"],
+        defaultValue: 20,
+        type: SettingsHelper.ST.SLIDER(0, 100, 1),
+    },
+    {
+        name: "Preview Image Side",
+        category: ["SyntaxHighlighter", "Preview Image", "PreviewImageSide"],
+        defaultValue: "left",
+        type: SettingsHelper.ST.COMBO(
+            { text: "Left", value: "left" },
+            { text: "Right", value: "right" }
+        ),
+    },
+    {
+        name: "Preview Image Size",
+        category: ["SyntaxHighlighter", "Preview Image", "PreviewImageSize"],
+        defaultValue: 300,
+        type: SettingsHelper.ST.SLIDER(100, 1000, 10),
     },
 ];
 settingsHelper.addSettings(settingsDefinitions);
