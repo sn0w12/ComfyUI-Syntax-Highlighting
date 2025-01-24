@@ -34,7 +34,9 @@ def index_images():
             images.append(
                 {
                     "filename": img_path.stem,
-                    "path": str(img_path.relative_to(script_dir)).replace("web", "extensions\\ComfyUI-Sn0w-Scripts"),
+                    "path": str(img_path.relative_to(script_dir)).replace(
+                        "web", "extensions\\ComfyUI-Syntax-Highlight"
+                    ),
                 }
             )
 
