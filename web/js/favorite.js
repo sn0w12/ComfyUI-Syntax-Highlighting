@@ -3,7 +3,6 @@ import { hexToRgb, leadingEdgeDebounce } from "./util.js";
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 
-const menuCache = new Map();
 const settingsHelper = new SettingsHelper("SyntaxHighlighter");
 let contextMenuObserver = null;
 
@@ -23,7 +22,7 @@ async function toggleFavourite(
             existingList.splice(index, 1);
         }
 
-        menuCache.clear();
+        SettingsHelper.PresetOnChange.reloadSettings();
         // Store the updated list back in the settings
         await api.storeSetting(setting, existingList);
     } catch (error) {
@@ -75,6 +74,10 @@ app.registerExtension({
                 }
             });
 
+            if (menuItems.length === 0) {
+                return options;
+            }
+
             // Sort menu items based on their position in existingList
             menuItems.sort((a, b) => {
                 const aIndex = existingList.indexOf(a.originalValue);
@@ -85,11 +88,23 @@ app.registerExtension({
                 return aIndex - bIndex;
             });
 
+            let menuItem = menuItems[0];
+            if (menuItems.length > 1) {
+                menuItem = {
+                    content: "Favourite",
+                    disabled: false,
+                    has_submenu: true,
+                    submenu: {
+                        options: menuItems,
+                    },
+                };
+            }
+
             // Add sorted items to options
             if (nullIndex !== -1) {
-                options.splice(nullIndex, 0, ...menuItems);
+                options.splice(nullIndex, 0, menuItem);
             } else {
-                options.push(...menuItems);
+                options.push(menuItem);
             }
 
             return options;
