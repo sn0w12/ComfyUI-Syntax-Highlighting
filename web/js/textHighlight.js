@@ -52,6 +52,12 @@ function enhanceTextarea(textarea) {
     setTextColors(textarea, overlayEl);
     setValidFiles(textarea);
 
+    // Add scroll sync
+    textarea.addEventListener("scroll", () => {
+        overlayEl.scrollTop = textarea.scrollTop;
+        overlayEl.scrollLeft = textarea.scrollLeft;
+    });
+
     // Add event listeners
     textarea.addEventListener("input", () => {
         syncText(textarea, overlayEl);
@@ -523,7 +529,8 @@ function setOverlayStyle(inputEl, overlayEl) {
     overlayEl.style.zIndex = "1";
     overlayEl.style.pointerEvents = "none";
     overlayEl.style.color = "transparent";
-    overlayEl.style.overflow = "hidden";
+    overlayEl.style.overflowX = textareaStyle.overflowX;
+    overlayEl.style.overflowY = textareaStyle.overflowY;
     overlayEl.style.whiteSpace = "pre-wrap";
     overlayEl.style.wordWrap = "break-word";
 }
