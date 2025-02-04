@@ -7,6 +7,8 @@ from aiohttp import web
 
 WEB_DIRECTORY = "./web"
 API_PREFIX = "/SyntaxHighlighting"
+NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
 
 
 def index_images():
@@ -75,3 +77,9 @@ async def get_embeddings(request):
 @PromptServer.instance.routes.get(f"{API_PREFIX}/enabled")
 async def get_enabled(request):
     return web.json_response({"enabled": True})
+
+
+@PromptServer.instance.routes.get(f"{API_PREFIX}/index")
+async def index_images_endpoint(request):
+    success = index_images()
+    return web.json_response({"success": success})
