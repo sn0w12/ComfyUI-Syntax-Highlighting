@@ -73,5 +73,13 @@ const settingsDefinitions = [
         type: SettingsHelper.ST.SLIDER(100, 1000, 10),
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
+    {
+        name: "Index Images",
+        category: ["Syntax Highlighting", "Preview Image", "IndexImages"],
+        type: SettingsHelper.ST.BUTTON("Index Images", async () => {
+            await fetch(`${API_PREFIX}/index`);
+        }),
+        tooltip: "Update images available for preview.",
+    },
 ];
 settingsHelper.addSettings(settingsDefinitions);
