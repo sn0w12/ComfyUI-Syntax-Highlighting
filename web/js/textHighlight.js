@@ -1,5 +1,8 @@
 import { settingsHelper, API_PREFIX } from "./settings.js";
 import { hexToRgb } from "./util.js";
+import { BooruApi } from "./booruTagApi.js";
+
+const booruApi = new BooruApi();
 
 // Track all enhanced textareas
 const enhancedTextareas = new WeakSet();
@@ -44,7 +47,49 @@ function enhanceTextarea(textarea) {
     overlayEl.className = "input-overlay";
     textarea.parentNode.insertBefore(overlayEl, textarea);
 
+    let currentTooltipTag = null;
+    let tooltipTimeout = null;
     textarea.style.background = "transparent";
+    textarea.addEventListener("mousemove", (e) => {
+        // Clear existing timeout
+        if (tooltipTimeout) {
+            clearTimeout(tooltipTimeout);
+        }
+
+        tooltipTimeout = setTimeout(() => {
+            // Temporarily hide overlay to get element below
+            textarea.style.pointerEvents = "none";
+            const elementBelow = document.elementFromPoint(
+                e.clientX,
+                e.clientY
+            );
+            textarea.style.pointerEvents = "auto";
+
+            // Check if hovering over tag span in overlay
+            if (elementBelow && elementBelow.closest(".tag-span")) {
+                const tagSpan = elementBelow.closest(".tag-span");
+                const tag = tagSpan.dataset.tag;
+
+                // Only update if different tag
+                if (currentTooltipTag !== tag) {
+                    hideTagTooltip();
+                    showTagTooltip(tagSpan, tag);
+                    currentTooltipTag = tag;
+                }
+            } else if (currentTooltipTag) {
+                hideTagTooltip();
+                currentTooltipTag = null;
+            }
+        }, 50); // 50ms debounce
+    });
+
+    textarea.addEventListener("mouseout", () => {
+        if (tooltipTimeout) {
+            clearTimeout(tooltipTimeout);
+        }
+        hideTagTooltip();
+        currentTooltipTag = null;
+    });
 
     // Setup the textarea and overlay
     setOverlayPosition(textarea, overlayEl);
@@ -499,7 +544,74 @@ async function syncText(inputEl, overlayEl, tries = 1) {
         }
     });
 
+    highlightedText = highlightedText
+        .split(",")
+        .map((tag) => {
+            if (!tag.trim()) return tag;
+            return `<span class="tag-span" data-tag="${tag.trim()}">${tag}</span>`;
+        })
+        .join(",");
+
     overlayEl.innerHTML = highlightedText;
+}
+
+async function showTagTooltip(element, tag) {
+    let tooltip = document.getElementById("tag-tooltip");
+    const description =
+        (await booruApi.getTagDescription(tag)) ?? "No description available.";
+
+    if (!tooltip) {
+        tooltip = document.createElement("div");
+        tooltip.id = "tag-tooltip";
+        document.body.appendChild(tooltip);
+    }
+
+    tooltip.style.cssText = `
+        position: fixed;
+        background: var(--comfy-menu-bg);
+        color: var(--comfy-menu-text);
+        padding: 12px;
+        border-radius: 4px;
+        font-size: 14px;
+        z-index: 1000;
+        pointer-events: none;
+        max-width: 300px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    `;
+
+    const rect = element.getBoundingClientRect();
+    tooltip.style.left = `${rect.left}px`;
+    tooltip.style.top = `${rect.bottom + 5}px`;
+
+    // Create tooltip content with title and description
+    const titleElement = document.createElement("div");
+    titleElement.style.cssText = `
+        font-weight: bold;
+        margin-bottom: ${description ? "8px" : "0"};
+        color: var(--comfy-menu-text);
+    `;
+    titleElement.textContent = tag;
+
+    tooltip.innerHTML = "";
+    tooltip.appendChild(titleElement);
+
+    const descElement = document.createElement("div");
+    descElement.style.cssText = `
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--comfy-menu-text);
+        opacity: 0.9;
+    `;
+    descElement.textContent = description;
+    tooltip.appendChild(descElement);
+    tooltip.style.display = "block";
+}
+
+function hideTagTooltip() {
+    const tooltips = document.querySelectorAll("#tag-tooltip");
+    tooltips.forEach((tooltip) => {
+        tooltip.remove();
+    });
 }
 
 function setOverlayPosition(inputEl, overlayEl) {
@@ -527,7 +639,7 @@ function setOverlayStyle(inputEl, overlayEl) {
     overlayEl.style.padding = textareaStyle.padding;
     overlayEl.style.boxSizing = textareaStyle.boxSizing;
     overlayEl.style.zIndex = "1";
-    overlayEl.style.pointerEvents = "none";
+    overlayEl.style.pointerEvents = "auto";
     overlayEl.style.color = "transparent";
     overlayEl.style.overflowX = textareaStyle.overflowX;
     overlayEl.style.overflowY = textareaStyle.overflowY;
