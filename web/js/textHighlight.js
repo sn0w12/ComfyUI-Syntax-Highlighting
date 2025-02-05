@@ -544,15 +544,38 @@ async function syncText(inputEl, overlayEl, tries = 1) {
         }
     });
 
-    highlightedText = highlightedText
-        .split(",")
-        .map((tag) => {
-            if (!tag.trim()) return tag;
-            return `<span class="tag-span" data-tag="${tag.trim()}">${tag}</span>`;
-        })
-        .join(",");
+    const processNode = (node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            // Split and wrap text nodes
+            return node.textContent
+                .split(",")
+                .map((tag) => {
+                    if (!tag.trim()) return tag;
+                    return `<span class="tag-span" data-tag="${tag.trim()}">${tag}</span>`;
+                })
+                .join(",");
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            // For element nodes, preserve attributes but process inner content
+            const clone = node.cloneNode(false); // Shallow clone to keep attributes
+            const innerProcessed = Array.from(node.childNodes)
+                .map((child) => processNode(child))
+                .join("");
+            clone.innerHTML = innerProcessed;
+            return clone.outerHTML;
+        }
+        return "";
+    };
 
-    overlayEl.innerHTML = highlightedText;
+    // Create a temporary container to parse HTML
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = highlightedText;
+
+    // Process all nodes recursively
+    let result = Array.from(tempDiv.childNodes)
+        .map((node) => processNode(node))
+        .join("");
+
+    overlayEl.innerHTML = result;
 }
 
 async function showTagTooltip(element, tag) {
@@ -590,7 +613,7 @@ async function showTagTooltip(element, tag) {
         margin-bottom: ${description ? "8px" : "0"};
         color: var(--comfy-menu-text);
     `;
-    titleElement.textContent = tag;
+    titleElement.textContent = booruApi.cleanTag(tag).replaceAll("_", " ");
 
     tooltip.innerHTML = "";
     tooltip.appendChild(titleElement);
