@@ -8,7 +8,13 @@ export class BooruApi {
     }
 
     cleanTag(tag) {
-        return tag.replaceAll(" ", "_").trim();
+        return tag
+            .replace(/:\d+\.\d+\)/g, "")
+            .replace(/^\(+/, "")
+            .replaceAll(" ", "_")
+            .replaceAll("\\(", "(")
+            .replaceAll("\\)", ")")
+            .trim();
     }
 
     async #fetch(url, options = {}) {
