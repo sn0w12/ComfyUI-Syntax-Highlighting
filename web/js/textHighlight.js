@@ -49,8 +49,27 @@ function enhanceTextarea(textarea) {
 
     let currentTooltipTag = null;
     let tooltipTimeout = null;
+    let isTyping = false;
+    let typingTimeout = null;
+
     textarea.style.background = "transparent";
+
+    // Add input handler for typing state
+    textarea.addEventListener("input", () => {
+        isTyping = true;
+        if (typingTimeout) {
+            clearTimeout(typingTimeout);
+        }
+        typingTimeout = setTimeout(() => {
+            isTyping = false;
+        }, 1000); // Reset typing state after 1 second of no input
+    });
+
     textarea.addEventListener("mousemove", (e) => {
+        if (isTyping) {
+            return;
+        }
+
         // Clear existing timeout
         if (tooltipTimeout) {
             clearTimeout(tooltipTimeout);
