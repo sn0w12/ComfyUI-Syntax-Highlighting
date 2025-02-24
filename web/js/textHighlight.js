@@ -54,17 +54,6 @@ function enhanceTextarea(textarea) {
 
     textarea.style.background = "transparent";
 
-    // Add input handler for typing state
-    textarea.addEventListener("input", () => {
-        isTyping = true;
-        if (typingTimeout) {
-            clearTimeout(typingTimeout);
-        }
-        typingTimeout = setTimeout(() => {
-            isTyping = false;
-        }, 1000); // Reset typing state after 1 second of no input
-    });
-
     textarea.addEventListener("mousemove", (e) => {
         if (isTyping) {
             return;
@@ -126,6 +115,21 @@ function enhanceTextarea(textarea) {
     textarea.addEventListener("input", () => {
         syncText(textarea, overlayEl);
         setOverlayStyle(textarea, overlayEl);
+        isTyping = true;
+        if (typingTimeout) {
+            clearTimeout(typingTimeout);
+        }
+        typingTimeout = setTimeout(() => {
+            isTyping = false;
+        }, 1000); // Reset typing state after 1 second of no input
+    });
+
+    textarea.addEventListener("paste", () => {
+        // Use setTimeout to ensure we get the updated value after the paste operation
+        setTimeout(() => {
+            syncText(textarea, overlayEl);
+            setOverlayStyle(textarea, overlayEl);
+        }, 10);
     });
 
     textarea.addEventListener("keydown", (event) => {
