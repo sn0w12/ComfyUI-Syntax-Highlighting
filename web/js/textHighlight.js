@@ -1,6 +1,7 @@
 import { settingsHelper, API_PREFIX } from "./settings.js";
 import { hexToRgb } from "./util.js";
 import { BooruApi } from "./booruTagApi.js";
+import { api } from "../../../scripts/api.js";
 
 const booruApi = new BooruApi();
 
@@ -127,9 +128,25 @@ function enhanceTextarea(textarea) {
     textarea.addEventListener("paste", () => {
         // Use setTimeout to ensure we get the updated value after the paste operation
         setTimeout(() => {
-            syncText(textarea, overlayEl);
-            setOverlayStyle(textarea, overlayEl);
+            try {
+                if (overlayEl && document.contains(overlayEl)) {
+                    syncText(textarea, overlayEl);
+                    setOverlayStyle(textarea, overlayEl);
+                } else {
+                    console.error(
+                        "Overlay element not found during paste operation"
+                    );
+                }
+            } catch (err) {
+                console.error("Error handling paste event:", err);
+            }
         }, 10);
+    });
+
+    api.addEventListener("update_text_highlight", (event) => {
+        setTextColors(textarea, overlayEl);
+        setOverlayStyle(textarea, overlayEl);
+        syncText(textarea, overlayEl);
     });
 
     textarea.addEventListener("keydown", (event) => {
