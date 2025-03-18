@@ -1,0 +1,14 @@
+[project]
+name = "syntax-highlighting"
+description = "Syntax highlighting and other quality of life improvements for ComfyUI."
+version = "1.0.0"
+license = {file = "LICENSE"}
+
+[project.urls]
+Repository = "https://github.com/sn0w12/ComfyUI-Syntax-Highlighting"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = "sn0w"
+DisplayName = "ComfyUI-Syntax-Highlighting"
+Icon = ""
