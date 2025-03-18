@@ -47,64 +47,14 @@ function enhanceTextarea(textarea) {
     const overlayEl = document.createElement("div");
     overlayEl.className = "input-overlay";
     textarea.parentNode.insertBefore(overlayEl, textarea);
-
-    let currentTooltipTag = null;
-    let tooltipTimeout = null;
-    let isTyping = false;
-    let typingTimeout = null;
-
     textarea.style.background = "transparent";
-
-    textarea.addEventListener("mousemove", (e) => {
-        if (isTyping) {
-            return;
-        }
-
-        // Clear existing timeout
-        if (tooltipTimeout) {
-            clearTimeout(tooltipTimeout);
-        }
-
-        tooltipTimeout = setTimeout(() => {
-            // Temporarily hide overlay to get element below
-            textarea.style.pointerEvents = "none";
-            const elementBelow = document.elementFromPoint(
-                e.clientX,
-                e.clientY
-            );
-            textarea.style.pointerEvents = "auto";
-
-            // Check if hovering over tag span in overlay
-            if (elementBelow && elementBelow.closest(".tag-span")) {
-                const tagSpan = elementBelow.closest(".tag-span");
-                const tag = tagSpan.dataset.tag;
-
-                // Only update if different tag
-                if (currentTooltipTag !== tag) {
-                    hideTagTooltip();
-                    showTagTooltip(tagSpan, tag);
-                    currentTooltipTag = tag;
-                }
-            } else if (currentTooltipTag) {
-                hideTagTooltip();
-                currentTooltipTag = null;
-            }
-        }, 50); // 50ms debounce
-    });
-
-    textarea.addEventListener("mouseout", () => {
-        if (tooltipTimeout) {
-            clearTimeout(tooltipTimeout);
-        }
-        hideTagTooltip();
-        currentTooltipTag = null;
-    });
 
     // Setup the textarea and overlay
     setOverlayPosition(textarea, overlayEl);
     setOverlayStyle(textarea, overlayEl);
     setTextColors(textarea, overlayEl);
     setValidFiles(textarea);
+    addTooltips(textarea);
 
     // Add scroll sync
     textarea.addEventListener("scroll", () => {
@@ -116,13 +66,6 @@ function enhanceTextarea(textarea) {
     textarea.addEventListener("input", () => {
         syncText(textarea, overlayEl);
         setOverlayStyle(textarea, overlayEl);
-        isTyping = true;
-        if (typingTimeout) {
-            clearTimeout(typingTimeout);
-        }
-        typingTimeout = setTimeout(() => {
-            isTyping = false;
-        }, 1000); // Reset typing state after 1 second of no input
     });
 
     textarea.addEventListener("paste", () => {
@@ -718,5 +661,74 @@ async function setValidFiles(inputEl) {
 async function getValidFiles(type) {
     return await settingsHelper.fetchApi(`${API_PREFIX}/${type}`, {
         method: "GET",
+    });
+}
+
+async function addTooltips(textarea) {
+    const shouldShow = await settingsHelper.getSetting("Tag Tooltips");
+    if (!shouldShow) return;
+
+    let currentTooltipTag = null;
+    let tooltipTimeout = null;
+    let isTyping = false;
+    let typingTimeout = null;
+
+    // Add scroll sync
+    textarea.addEventListener("scroll", () => {});
+
+    // Add event listeners
+    textarea.addEventListener("input", () => {
+        isTyping = true;
+        if (typingTimeout) {
+            clearTimeout(typingTimeout);
+        }
+        typingTimeout = setTimeout(() => {
+            isTyping = false;
+        }, 1000); // Reset typing state after 1 second of no input
+    });
+
+    textarea.addEventListener("mousemove", (e) => {
+        if (isTyping) {
+            return;
+        }
+
+        // Clear existing timeout
+        if (tooltipTimeout) {
+            clearTimeout(tooltipTimeout);
+        }
+
+        tooltipTimeout = setTimeout(() => {
+            // Temporarily hide overlay to get element below
+            textarea.style.pointerEvents = "none";
+            const elementBelow = document.elementFromPoint(
+                e.clientX,
+                e.clientY
+            );
+            textarea.style.pointerEvents = "auto";
+
+            // Check if hovering over tag span in overlay
+            if (elementBelow && elementBelow.closest(".tag-span")) {
+                const tagSpan = elementBelow.closest(".tag-span");
+                const tag = tagSpan.dataset.tag;
+
+                // Only update if different tag
+                if (currentTooltipTag !== tag) {
+                    hideTagTooltip();
+                    showTagTooltip(tagSpan, tag);
+                    currentTooltipTag = tag;
+                }
+            } else if (currentTooltipTag) {
+                hideTagTooltip();
+                currentTooltipTag = null;
+            }
+        }, 50); // 50ms debounce
+    });
+
+    textarea.addEventListener("mouseout", () => {
+        if (tooltipTimeout) {
+            clearTimeout(tooltipTimeout);
+        }
+        hideTagTooltip();
+        currentTooltipTag = null;
     });
 }

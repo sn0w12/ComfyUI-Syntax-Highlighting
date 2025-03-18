@@ -24,6 +24,15 @@ const settingsDefinitions = [
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
+        name: "Tag Tooltips",
+        category: ["Syntax Highlighting", "Textbox", "TextboxTooltips"],
+        defaultValue: false,
+        tooltip:
+            "When hovering over a tag in a textbox, show the tag's tooltip.",
+        type: SettingsHelper.ST.BOOLEAN,
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
+    },
+    {
         name: "Favorite On Top",
         category: ["Syntax Highlighting", "Combo", "FavoriteOnTop"],
         defaultValue: true,
