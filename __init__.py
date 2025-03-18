@@ -5,10 +5,17 @@ import folder_paths
 from server import PromptServer
 from aiohttp import web
 
+from .src.save_preview_image import SavePreviewImage
+
 WEB_DIRECTORY = "./web"
 API_PREFIX = "/SyntaxHighlighting"
-NODE_CLASS_MAPPINGS = {}
-NODE_DISPLAY_NAME_MAPPINGS = {}
+NODE_PREFIX = "SyntaxHighlighting_"
+NODE_CLASS_MAPPINGS = {
+    f"{NODE_PREFIX}SavePreviewImage": SavePreviewImage,
+}
+NODE_DISPLAY_NAME_MAPPINGS = {
+    f"{NODE_PREFIX}SavePreviewImage": "Save Preview Image",
+}
 
 
 def index_images():
