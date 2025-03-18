@@ -5,8 +5,43 @@ import { api } from "../../../scripts/api.js";
 
 const booruApi = new BooruApi();
 
+// Global shared resources
+const globalResources = {
+    validLoras: null,
+    validEmbeddings: null,
+    colors: null,
+    highlightType: false,
+    errorColor: "var(--error-text)",
+};
+
 // Track all enhanced textareas
 const enhancedTextareas = new WeakSet();
+
+// Initialize global resources
+async function initializeGlobalResources() {
+    globalResources.validLoras = await getValidFiles("loras");
+    globalResources.validEmbeddings = await getValidFiles("embeddings");
+    await updateTextColors();
+}
+
+// Initialize resources when script loads
+initializeGlobalResources();
+
+// Update all textareas when settings change
+api.addEventListener("update_text_highlight", async () => {
+    document.querySelectorAll("textarea").forEach((textarea) => {
+        const overlay = textarea.previousSibling;
+        if (overlay && overlay.classList.contains("input-overlay")) {
+            setOverlayStyle(textarea, overlay);
+            syncText(textarea, overlay);
+        }
+    });
+});
+
+settingsHelper.addReloadSettingsListener(() => {
+    // Update global resources when settings change
+    initializeGlobalResources();
+});
 
 // Create observer for new textareas
 const textareaObserver = new MutationObserver((mutations) => {
@@ -53,7 +88,6 @@ function enhanceTextarea(textarea) {
     setOverlayPosition(textarea, overlayEl);
     setOverlayStyle(textarea, overlayEl);
     setTextColors(textarea, overlayEl);
-    setValidFiles(textarea);
     addTooltips(textarea);
 
     // Add scroll sync
@@ -133,41 +167,26 @@ document.querySelectorAll("textarea").forEach((textarea) => {
     enhanceTextarea(textarea);
 });
 
-async function setTextHighlightType(inputEl) {
+async function setTextHighlightType() {
     const highlightGradient = await settingsHelper.getSetting(
         "Textbox Highlight Type"
     );
-
-    let shouldHighlightGradient = false;
-    switch (highlightGradient) {
-        case "nesting":
-            shouldHighlightGradient = false;
-            break;
-        case "strength":
-            shouldHighlightGradient = true;
-            break;
-        default:
-            shouldHighlightGradient = false;
-            break;
-    }
-
-    inputEl.highlightGradient = shouldHighlightGradient;
+    globalResources.highlightType = highlightGradient === "strength";
 }
 
-async function setTextColors(inputEl, overlayEl) {
+async function updateTextColors() {
     const customTextboxColors = await settingsHelper.getSetting(
         "Textbox Colors"
     );
-    setTextHighlightType(inputEl);
+    await setTextHighlightType();
+    globalResources.colors = customTextboxColors
+        .split("\n")
+        .map((color) => (color.charAt(0) === "#" ? hexToRgb(color) : color));
+}
 
-    const colors = customTextboxColors.split("\n");
-    inputEl.colors = colors.map((color) =>
-        color.charAt(0) === "#" ? hexToRgb(color) : color
-    );
-    inputEl.errorColor = "var(--error-text)";
-
+function setTextColors(inputEl, overlayEl) {
+    // Use global resources instead of setting them on the element
     syncText(inputEl, overlayEl);
-    return colors;
 }
 
 function escapeHtml(char) {
@@ -235,17 +254,16 @@ function extractLoraName(text, currentIndex) {
     return loraName;
 }
 
-function validateName(validFiles, name) {
+function validateName(type, name) {
+    const validFiles =
+        type === "lora"
+            ? globalResources.validLoras
+            : globalResources.validEmbeddings;
     if (!validFiles) {
         console.error("Valid names not defined or not an array.");
         return false;
     }
-
-    if (validFiles.includes(name)) {
-        return true;
-    } else {
-        return false;
-    }
+    return validFiles.includes(name);
 }
 
 function processTag(tag) {
@@ -289,9 +307,9 @@ async function syncText(inputEl, overlayEl, tries = 1) {
     const text = inputEl.value;
     overlayEl.textContent = text;
 
-    const colors = inputEl.colors;
-    const errorColor = inputEl.errorColor;
-    const shouldHighlightGradient = inputEl.highlightGradient;
+    const colors = globalResources.colors;
+    const errorColor = globalResources.errorColor;
+    const shouldHighlightGradient = globalResources.highlightType;
     const loraColor = colors ? colors[0] : undefined;
 
     if (
@@ -349,7 +367,7 @@ async function syncText(inputEl, overlayEl, tries = 1) {
 
         let color = colors[nestingLevel % colors.length];
         let uniqueId = generateUniqueId(charToType(char));
-        if (inputEl.highlightGradient === true) {
+        if (globalResources.highlightType === true) {
             color = `id-${uniqueId}`;
         }
         switch (char) {
@@ -391,7 +409,7 @@ async function syncText(inputEl, overlayEl, tries = 1) {
                     const embeddingText = text.slice(i, endIndex);
                     if (
                         validateName(
-                            inputEl.validEmbeddings,
+                            "embedding",
                             embeddingText.split(":")[1]
                         ) === false
                     ) {
@@ -420,10 +438,7 @@ async function syncText(inputEl, overlayEl, tries = 1) {
                         // Extract and validate the LoRA name
                         if (id.endsWith("lora")) {
                             const loraName = extractLoraName(text, i);
-                            if (
-                                validateName(inputEl.validLoras, loraName) ===
-                                false
-                            ) {
+                            if (validateName("lora", loraName) === false) {
                                 uniqueIdMap.set(id, [
                                     errorColor,
                                     originalColor,
@@ -434,7 +449,7 @@ async function syncText(inputEl, overlayEl, tries = 1) {
                         }
 
                         if (
-                            inputEl.highlightGradient === true ||
+                            globalResources.highlightType === true ||
                             id.endsWith("lora")
                         ) {
                             // Check for the strength
@@ -651,11 +666,6 @@ function setOverlayStyle(inputEl, overlayEl) {
     overlayEl.style.overflowY = textareaStyle.overflowY;
     overlayEl.style.whiteSpace = "pre-wrap";
     overlayEl.style.wordWrap = "break-word";
-}
-
-async function setValidFiles(inputEl) {
-    inputEl.validLoras = await getValidFiles("loras");
-    inputEl.validEmbeddings = await getValidFiles("embeddings");
 }
 
 async function getValidFiles(type) {

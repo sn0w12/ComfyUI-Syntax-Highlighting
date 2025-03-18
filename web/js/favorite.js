@@ -5,6 +5,23 @@ import { api } from "../../../scripts/api.js";
 
 const settingsHelper = new SettingsHelper("SyntaxHighlighting");
 let contextMenuObserver = null;
+let favoritesCache = null;
+
+async function getFavorites() {
+    if (favoritesCache === null) {
+        favoritesCache = await settingsHelper.getSettingById(
+            "SyntaxHighlighting.favorites"
+        );
+        if (!Array.isArray(favoritesCache)) {
+            favoritesCache = [];
+        }
+    }
+    return favoritesCache;
+}
+
+function updateFavoritesCache(newFavorites) {
+    favoritesCache = newFavorites;
+}
 
 async function toggleFavourite(
     existingList,
@@ -22,6 +39,7 @@ async function toggleFavourite(
             existingList.splice(index, 1);
         }
 
+        updateFavoritesCache(existingList);
         SettingsHelper.PresetOnChange.reloadSettings();
         // Store the updated list back in the settings
         await api.storeSetting(setting, existingList);
@@ -33,13 +51,7 @@ async function toggleFavourite(
 app.registerExtension({
     name: "SyntaxHighlighting.ToggleFavorite",
     async setup() {
-        let existingList = await settingsHelper.getSettingById(
-            "SyntaxHighlighting.favorites"
-        );
-        if (!Array.isArray(existingList)) {
-            existingList = [];
-        }
-
+        const existingList = await getFavorites();
         const original_getNodeMenuOptions = app.canvas.getNodeMenuOptions;
         app.canvas.getNodeMenuOptions = function (node) {
             const options = original_getNodeMenuOptions.apply(this, arguments);
@@ -276,12 +288,7 @@ async function addStarsToFavourited(
 }
 
 async function initializeContextMenuObserver() {
-    let existingList = await settingsHelper.getSettingById(
-        "SyntaxHighlighting.favorites"
-    );
-    if (!Array.isArray(existingList)) {
-        existingList = [];
-    }
+    const existingList = await getFavorites();
 
     if (contextMenuObserver) {
         contextMenuObserver.disconnect();
