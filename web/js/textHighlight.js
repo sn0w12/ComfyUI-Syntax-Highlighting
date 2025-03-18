@@ -636,14 +636,29 @@ function hideTagTooltip() {
 }
 
 function setOverlayPosition(inputEl, overlayEl) {
+    // Skip if elements don't exist or aren't in the DOM
+    if (!inputEl || !overlayEl || !document.contains(inputEl)) return;
     const textareaStyle = window.getComputedStyle(inputEl);
-    overlayEl.style.left = textareaStyle.left;
-    overlayEl.style.top = textareaStyle.top;
-    overlayEl.style.width = textareaStyle.width;
-    overlayEl.style.height = textareaStyle.height;
-    overlayEl.style.display = textareaStyle.display;
-    overlayEl.style.transform = textareaStyle.transform;
-    overlayEl.style.transformOrigin = textareaStyle.transformOrigin;
+
+    // Use requestAnimationFrame for smooth visual updates
+    requestAnimationFrame(() => {
+        const newPosition = {
+            left: textareaStyle.left,
+            top: textareaStyle.top,
+            width: textareaStyle.width,
+            height: textareaStyle.height,
+            display: textareaStyle.display,
+            transform: textareaStyle.transform,
+            transformOrigin: textareaStyle.transformOrigin,
+        };
+
+        // Only apply changes if needed
+        for (const [prop, value] of Object.entries(newPosition)) {
+            if (overlayEl.style[prop] !== value) {
+                overlayEl.style[prop] = value;
+            }
+        }
+    });
 }
 
 function setOverlayStyle(inputEl, overlayEl) {
