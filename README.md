@@ -25,16 +25,30 @@ To favorite the currently selected combo value, right click the node and click `
 
 ## Settings
 
-| Setting Name              | Type                     | Description                                                                                           |
-| ------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Textbox Colors            | Multiline text           | List of RGB or HEX colors (one per line) used for syntax highlighting                                 |
-| Textbox Highlight Type    | Combo (Strength/Nesting) | Controls highlighting behavior - Strength by the weight and Nesting by the nesting of the parentheses |
-| Favorite On Top           | Boolean                  | When enabled, places favorite items at the top of lists                                               |
-| Combo Highlight Color     | Color picker             | Sets the highlight color for combo box items                                                          |
-| Preview Image Hover Delay | Slider (0-1000ms)        | Delay before showing preview images on hover                                                          |
-| Preview Image Padding     | Slider (0-100px)         | Padding around preview images                                                                         |
-| Preview Image Side        | Combo (Left/Right)       | Which side preview images appear on                                                                   |
-| Preview Image Size        | Slider (100-1000px)      | Size of preview images                                                                                |
+### Textbox
+
+| Setting Name           | Type                     | Description                                                                                    |
+| ---------------------- | ------------------------ | ---------------------------------------------------------------------------------------------- |
+| Textbox Colors         | Multiline text           | A list of either rgb or hex colors, one color per line.                                        |
+| Textbox Highlight Type | Combo (Strength/Nesting) | If strength, only the first and last colors will be used. If nesting, all colors will be used. |
+| Tag Tooltips           | Boolean                  | When hovering over a tag in a textbox, show the tag's tooltip.                                 |
+
+### Combo
+
+| Setting Name          | Type         | Description                              |
+| --------------------- | ------------ | ---------------------------------------- |
+| Favorite On Top       | Boolean      | Put favorite items over all other items. |
+| Combo Highlight Color | Color picker |                                          |
+
+### Preview Image
+
+| Setting Name              | Type               | Description                          |
+| ------------------------- | ------------------ | ------------------------------------ |
+| Preview Image Hover Delay | Slider (0-1000)    |                                      |
+| Preview Image Padding     | Slider (0-100)     |                                      |
+| Preview Image Side        | Combo (Left/Right) |                                      |
+| Preview Image Size        | Slider (100-1000)  |                                      |
+| Index Images              | Button             | Update images available for preview. |
 
 ## Examples
 

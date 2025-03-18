@@ -662,6 +662,118 @@ export class SettingsHelper {
             );
         }
     }
+
+    /**
+     * Generates a markdown table of settings organized by categories from a settings definitions array.
+     * @param {Array} settingsDefinitions - An array of setting definition objects
+     * @returns {string} A markdown formatted table of settings.
+     * @example
+     * const markdownTable = settingsHelper.generateSettingsMarkdownTable(settingsDefinitions);
+     * console.log(markdownTable);
+     */
+    generateSettingsMarkdownTable(settingsDefinitions) {
+        if (
+            !Array.isArray(settingsDefinitions) ||
+            settingsDefinitions.length === 0
+        ) {
+            return "No settings definitions provided.";
+        }
+
+        // Group settings by category
+        const settingsByCategory = {};
+
+        for (const setting of settingsDefinitions) {
+            // Skip settings without a name
+            if (!setting.name) continue;
+
+            // Get the main category (first item in the category array) or use "Uncategorized"
+            const category =
+                setting.category && setting.category.length > 0
+                    ? setting.category[1]
+                    : "Uncategorized";
+
+            // Initialize category if it doesn't exist
+            if (!settingsByCategory[category]) {
+                settingsByCategory[category] = [];
+            }
+
+            // Determine the type string based on the setting type
+            let typeStr = "Unknown";
+            if (typeof setting.type === "function") {
+                // Try to infer type from the function name or structure
+                const typeObj = setting.type();
+                if (typeObj.type === "boolean") typeStr = "Boolean";
+                else if (typeObj.type === "number") typeStr = "Number";
+                else if (typeObj.type === "text") typeStr = "Text";
+                else if (typeObj.type === "slider" && typeObj.attrs)
+                    typeStr = `Slider (${typeObj.attrs.min}-${typeObj.attrs.max})`;
+                else if (typeObj.type === "combo" && typeObj.options)
+                    typeStr = `Combo (${typeObj.options
+                        .map((o) => o.text || o)
+                        .join("/")})`;
+                else if (typeObj.type === CustomSettingTypes.multilineSetting)
+                    typeStr = "Multiline text";
+                else if (typeObj.type === CustomSettingTypes.colorPickerSetting)
+                    typeStr = "Color picker";
+                else if (typeObj.type === CustomSettingTypes.buttonSetting)
+                    typeStr = "Button";
+                else typeStr = String(typeObj.type);
+            } else if (
+                typeof setting.type === "object" &&
+                setting.type !== null
+            ) {
+                // Direct type object
+                if (setting.type.type === "boolean") typeStr = "Boolean";
+                else if (setting.type.type === "number") typeStr = "Number";
+                else if (setting.type.type === "text") typeStr = "Text";
+                else if (setting.type.type === "slider" && setting.type.attrs)
+                    typeStr = `Slider (${setting.type.attrs.min}-${setting.type.attrs.max})`;
+                else if (setting.type.type === "combo" && setting.type.options)
+                    typeStr = `Combo (${setting.type.options
+                        .map((o) => o.text || o)
+                        .join("/")})`;
+                else if (
+                    setting.type.type === CustomSettingTypes.multilineSetting
+                )
+                    typeStr = "Multiline text";
+                else if (
+                    setting.type.type === CustomSettingTypes.colorPickerSetting
+                )
+                    typeStr = "Color picker";
+                else if (setting.type.type === CustomSettingTypes.buttonSetting)
+                    typeStr = "Button";
+                else typeStr = String(setting.type.type);
+            } else if (typeof setting.type === "string") {
+                typeStr = setting.type;
+            }
+
+            // Get description from tooltip if available
+            const description = setting.tooltip || "";
+
+            settingsByCategory[category].push({
+                name: setting.name,
+                type: typeStr,
+                description,
+            });
+        }
+
+        // Generate markdown table
+        let markdown = "";
+
+        for (const [category, settings] of Object.entries(settingsByCategory)) {
+            markdown += `### ${category}\n\n`;
+            markdown += "| Setting Name | Type | Description |\n";
+            markdown += "| ------------ | ---- | ----------- |\n";
+
+            for (const setting of settings) {
+                markdown += `| ${setting.name} | ${setting.type} | ${setting.description} |\n`;
+            }
+
+            markdown += "\n";
+        }
+
+        return markdown;
+    }
 }
 
 export class UiHelper {

@@ -93,3 +93,9 @@ const settingsDefinitions = [
     },
 ];
 settingsHelper.addSettings(settingsDefinitions);
+
+if (localStorage.getItem("SyntaxHighlighting.dev") === "true") {
+    const markdownTable =
+        settingsHelper.generateSettingsMarkdownTable(settingsDefinitions);
+    console.log(markdownTable);
+}
