@@ -83,6 +83,7 @@ function enhanceTextarea(textarea) {
     overlayEl.className = "input-overlay";
     textarea.parentNode.insertBefore(overlayEl, textarea);
     textarea.style.background = "transparent";
+    textarea.style.position = "relative";
 
     // Setup the textarea and overlay
     setOverlayPosition(textarea, overlayEl);
