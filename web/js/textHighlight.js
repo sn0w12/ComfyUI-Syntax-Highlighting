@@ -2,32 +2,34 @@ import { settingsHelper, API_PREFIX } from "./settings.js";
 import { hexToRgb } from "./util.js";
 import { BooruApi } from "./booruTagApi.js";
 import { api } from "../../../scripts/api.js";
+import { SyntaxTokenizer } from "./highlighting/tokenizer.js";
+import { SyntaxHighlighter } from "./highlighting/highlighter.js";
 
 const booruApi = new BooruApi();
+const enhancedTextareas = new WeakSet();
 
-// Global shared resources
 const globalResources = {
     validLoras: null,
     validEmbeddings: null,
     colors: null,
-    highlightType: false,
+    highlightType: "nesting", // Default to nesting instead of false
     errorColor: "var(--error-text)",
 };
 
-// Track all enhanced textareas
-const enhancedTextareas = new WeakSet();
-
-// Initialize global resources
 async function initializeGlobalResources() {
     globalResources.validLoras = await getValidFiles("loras");
     globalResources.validEmbeddings = await getValidFiles("embeddings");
     await updateTextColors();
 }
 
-// Initialize resources when script loads
+async function getValidFiles(type) {
+    return await settingsHelper.fetchApi(`${API_PREFIX}/${type}`, {
+        method: "GET",
+    });
+}
+
 initializeGlobalResources();
 
-// Update all textareas when settings change
 api.addEventListener("update_text_highlight", async () => {
     document.querySelectorAll("textarea").forEach((textarea) => {
         const overlay = textarea.previousSibling;
@@ -39,7 +41,6 @@ api.addEventListener("update_text_highlight", async () => {
 });
 
 settingsHelper.addReloadSettingsListener(() => {
-    // Update global resources when settings change
     initializeGlobalResources();
 });
 
@@ -169,10 +170,10 @@ document.querySelectorAll("textarea").forEach((textarea) => {
 });
 
 async function setTextHighlightType() {
-    const highlightGradient = await settingsHelper.getSetting(
+    const highlightType = await settingsHelper.getSetting(
         "Textbox Highlight Type"
     );
-    globalResources.highlightType = highlightGradient === "strength";
+    globalResources.highlightType = highlightType;
 }
 
 async function updateTextColors() {
@@ -190,120 +191,6 @@ function setTextColors(inputEl, overlayEl) {
     syncText(inputEl, overlayEl);
 }
 
-function escapeHtml(char) {
-    switch (char) {
-        case "<":
-            return "&lt;";
-        case ">":
-            return "&gt;";
-        default:
-            return char;
-    }
-}
-
-function interpolateColor(color1, color2, factor) {
-    const rgb1 = color1.match(/\d+/g).map(Number);
-    const rgb2 = color2.match(/\d+/g).map(Number);
-
-    const r = Math.round(rgb1[0] + factor * (rgb2[0] - rgb1[0]));
-    const g = Math.round(rgb1[1] + factor * (rgb2[1] - rgb1[1]));
-    const b = Math.round(rgb1[2] + factor * (rgb2[2] - rgb1[2]));
-
-    return `rgb(${r}, ${g}, ${b})`;
-}
-
-function easeInOutCubic(t) {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-}
-
-function charToType(char) {
-    switch (char) {
-        case "<":
-            return "-lora";
-        case "e":
-            return "-embedding";
-        default:
-            return "";
-    }
-}
-
-function extractLoraName(text, currentIndex) {
-    const loraPrefix = "lora:";
-    const startIndex =
-        text.lastIndexOf(loraPrefix, currentIndex) + loraPrefix.length;
-
-    // Find the end of the LoRA name (next space, comma, or ".safetensors")
-    let endIndex = text.indexOf(" ", startIndex);
-    const commaIndex = text.indexOf(",", startIndex);
-    const safetensorsIndex = text.indexOf(".safetensors", startIndex);
-
-    if (endIndex === -1 || (commaIndex !== -1 && commaIndex < endIndex)) {
-        endIndex = commaIndex;
-    }
-    if (
-        endIndex === -1 ||
-        (safetensorsIndex !== -1 && safetensorsIndex < endIndex)
-    ) {
-        endIndex = safetensorsIndex;
-    }
-
-    // If there's no space, comma, or ".safetensors" after the LoRA name, consider the end of the text
-    const loraName =
-        endIndex === -1
-            ? text.slice(startIndex)
-            : text.slice(startIndex, endIndex);
-    return loraName;
-}
-
-function validateName(type, name) {
-    const validFiles =
-        type === "lora"
-            ? globalResources.validLoras
-            : globalResources.validEmbeddings;
-    if (!validFiles) {
-        console.error("Valid names not defined or not an array.");
-        return false;
-    }
-    return validFiles.includes(name);
-}
-
-function processTag(tag) {
-    let trimmedTag = tag.trim();
-
-    // Remove HTML tags
-    trimmedTag = trimmedTag.replace(/<|>/g, "");
-
-    // Remove the first character if it is a parenthesis
-    if (trimmedTag.startsWith("(")) {
-        trimmedTag = trimmedTag.substring(1).trim();
-    }
-
-    // Special handling for lora tags
-    if (trimmedTag.toLowerCase().startsWith("&lt;lora:")) {
-        const matches = trimmedTag.match(/:/g);
-        if (matches && matches.length >= 2) {
-            const secondColonIndex = trimmedTag.indexOf(
-                ":",
-                trimmedTag.indexOf(":") + 1
-            );
-            trimmedTag = trimmedTag.substring(0, secondColonIndex).trim();
-        }
-    } else {
-        // Remove everything after the first colon for non-lora tags
-        const colonIndex = trimmedTag.indexOf(":");
-        if (colonIndex !== -1) {
-            trimmedTag = trimmedTag.substring(0, colonIndex).trim();
-        }
-    }
-
-    return trimmedTag;
-}
-
-const charPairs = {
-    "(": ")",
-    "<": ">",
-};
-
 async function syncText(inputEl, overlayEl, tries = 1) {
     const text = inputEl.value;
     overlayEl.textContent = text;
@@ -317,7 +204,7 @@ async function syncText(inputEl, overlayEl, tries = 1) {
         !colors ||
         !errorColor ||
         !loraColor ||
-        shouldHighlightGradient == undefined
+        shouldHighlightGradient === undefined
     ) {
         if (tries < 5) {
             setTimeout(() => syncText(inputEl, overlayEl, tries++), tries * 5);
@@ -325,223 +212,11 @@ async function syncText(inputEl, overlayEl, tries = 1) {
         return;
     }
 
-    let uniqueIdCounter = 0;
-    const generateUniqueId = (type = "") => `span-${uniqueIdCounter++}${type}`;
+    const tokenizer = new SyntaxTokenizer();
+    const highlighter = new SyntaxHighlighter(globalResources);
 
-    let nestingLevel = 0;
-    let highlightedText = "";
-    let lastIndex = 0;
-    let spanStack = [];
-    const uniqueIdMap = new Map();
-
-    /*
-     * This loop iterates over each character in the `text` string to apply syntax highlighting and handle special cases.
-     * - lastIndex: index of the last processed character, used to slice text segments.
-     * - spanStack: stack to manage opened spans, storing their ids, start positions, original colors, and characters.
-     */
-    for (let i = 0; i < text.length; i++) {
-        const char = text[i].toLowerCase();
-
-        // Handle escape characters
-        if (
-            char === "\\" &&
-            i + 1 < text.length &&
-            (text[i + 1] === "(" || text[i + 1] === ")")
-        ) {
-            i++;
-            continue;
-        }
-
-        // Handle wrong escape characters
-        if (
-            char === "/" &&
-            i + 1 < text.length &&
-            (text[i + 1] === "(" || text[i + 1] === ")")
-        ) {
-            highlightedText +=
-                text.slice(lastIndex, i) +
-                `<span style="background-color: ${errorColor};">/</span>`;
-            console.error(`Replace "${char}" at char ${i} with "\\"`);
-            lastIndex = i + 1;
-            continue;
-        }
-
-        let color = colors[nestingLevel % colors.length];
-        let uniqueId = generateUniqueId(charToType(char));
-        if (globalResources.highlightType === true) {
-            color = `id-${uniqueId}`;
-        }
-        switch (char) {
-            case "(":
-            case "<":
-                highlightedText +=
-                    text.slice(lastIndex, i) +
-                    `<span id="${uniqueId}" style="background-color: ${color};">${escapeHtml(
-                        char
-                    )}`;
-                spanStack.push({
-                    id: uniqueId,
-                    start: highlightedText.length,
-                    originalSpan: `<span id="${uniqueId}" style="background-color: ${color};">`,
-                    nestingLevel,
-                    originalColor: color,
-                    originalChar: char,
-                });
-                nestingLevel++;
-                lastIndex = i + 1;
-                break;
-            case "e":
-                let embeddingColor = colors[0];
-                const embeddingPrefix = "embedding:";
-
-                // Check if the text starts with "embedding:" at position i
-                if (text.toLowerCase().startsWith(embeddingPrefix, i)) {
-                    // Find the end of the embedding (next space or comma)
-                    let endIndex = i + embeddingPrefix.length;
-                    while (
-                        endIndex < text.length &&
-                        text[endIndex] !== " " &&
-                        text[endIndex] !== ","
-                    ) {
-                        endIndex++;
-                    }
-
-                    // Get the full embedding text
-                    const embeddingText = text.slice(i, endIndex);
-                    if (
-                        validateName(
-                            "embedding",
-                            embeddingText.split(":")[1]
-                        ) === false
-                    ) {
-                        embeddingColor = errorColor;
-                    }
-                    const wrappedEmbedding = `<span id="${uniqueId}" style="background-color: ${embeddingColor};">${escapeHtml(
-                        embeddingText
-                    )}</span>`;
-                    highlightedText +=
-                        text.slice(lastIndex, i) + wrappedEmbedding;
-                    lastIndex = i + embeddingText.length;
-                }
-                break;
-            case ")":
-            case ">":
-                if (nestingLevel > 0) {
-                    const { id, originalColor, originalChar } =
-                        spanStack[spanStack.length - 1];
-                    if (charPairs[originalChar] === char) {
-                        spanStack.pop();
-                        highlightedText +=
-                            text.slice(lastIndex, i) +
-                            `${escapeHtml(char)}</span>`;
-                        nestingLevel--;
-
-                        // Extract and validate the LoRA name
-                        if (id.endsWith("lora")) {
-                            const loraName = extractLoraName(text, i);
-                            if (validateName("lora", loraName) === false) {
-                                uniqueIdMap.set(id, [
-                                    errorColor,
-                                    originalColor,
-                                ]);
-                                lastIndex = i + 1;
-                                continue;
-                            }
-                        }
-
-                        if (
-                            globalResources.highlightType === true ||
-                            id.endsWith("lora")
-                        ) {
-                            // Check for the strength
-                            const strengthText = text.slice(
-                                Math.max(0, i - 10),
-                                i
-                            );
-                            const match =
-                                strengthText.match(/(\d+(\.\d+)?)\s*$/);
-                            if (match) {
-                                const strength = parseFloat(match[1]);
-                                const clampedStrength = Math.max(
-                                    0,
-                                    Math.min(2, strength)
-                                );
-                                const normalizedStrength = clampedStrength / 2;
-                                const newColor = interpolateColor(
-                                    colors[0],
-                                    colors[colors.length - 1],
-                                    easeInOutCubic(normalizedStrength)
-                                );
-                                uniqueIdMap.set(id, [newColor, originalColor]);
-                            } else {
-                                uniqueIdMap.set(id, [
-                                    interpolateColor(
-                                        colors[0],
-                                        colors[colors.length - 1],
-                                        0.5
-                                    ),
-                                    originalColor,
-                                ]);
-                            }
-                        }
-                        lastIndex = i + 1;
-                    }
-                }
-                break;
-        }
-    }
-
-    highlightedText += text.slice(lastIndex);
-
-    if (nestingLevel > 0) {
-        // Apply red highlight to the unclosed spans
-        while (spanStack.length > 0) {
-            const spanData = spanStack.pop();
-            if (spanData) {
-                const { id, start, originalSpan } = spanData;
-                const errorSpanTag = `<span id="${id}" style="background-color: ${errorColor};">`;
-
-                if (originalSpan) {
-                    highlightedText = highlightedText.replace(
-                        originalSpan,
-                        errorSpanTag
-                    );
-                    highlightedText += `</span>`;
-                }
-            }
-        }
-    }
-
-    // Apply the updated colors to the highlighted text
-    uniqueIdMap.forEach((colors, id) => {
-        const [newColor, originalColor] = [colors[0], colors[1]];
-        highlightedText = highlightedText.replace(
-            `id="${id}" style="background-color: ${originalColor};"`,
-            `id="${id}" style="background-color: ${newColor};"`
-        );
-    });
-
-    // Highlight duplicate tags
-    const strippedText = highlightedText.replace(/<[^>]+>/g, "");
-    const segments = strippedText
-        .split(",")
-        .filter((s) => s !== ",")
-        .map((s) => processTag(s));
-
-    const exactDuplicates = segments.filter(
-        (item, index) => segments.indexOf(item) !== index
-    );
-
-    exactDuplicates.forEach((duplicate) => {
-        if (duplicate) {
-            const regex = new RegExp(`(^|,\\s*)${duplicate}(?=,|$)`, "g");
-            highlightedText = highlightedText.replace(
-                regex,
-                (match, prefix) =>
-                    `${prefix}<span style="background-color: ${errorColor};">${duplicate}</span>`
-            );
-        }
-    });
+    const tokens = tokenizer.tokenize(text);
+    let highlightedText = highlighter.processTokens(tokens);
 
     const processNode = (node) => {
         if (node.nodeType === Node.TEXT_NODE) {
@@ -682,12 +357,6 @@ function setOverlayStyle(inputEl, overlayEl) {
     overlayEl.style.overflowY = textareaStyle.overflowY;
     overlayEl.style.whiteSpace = "pre-wrap";
     overlayEl.style.wordWrap = "break-word";
-}
-
-async function getValidFiles(type) {
-    return await settingsHelper.fetchApi(`${API_PREFIX}/${type}`, {
-        method: "GET",
-    });
 }
 
 async function addTooltips(textarea) {

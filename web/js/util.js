@@ -32,3 +32,29 @@ export function leadingEdgeDebounce(func, wait) {
         }, wait);
     };
 }
+
+export function escapeHtml(char) {
+    switch (char) {
+        case "<":
+            return "&lt;";
+        case ">":
+            return "&gt;";
+        default:
+            return char;
+    }
+}
+
+export function interpolateColor(color1, color2, factor) {
+    const rgb1 = color1.match(/\d+/g).map(Number);
+    const rgb2 = color2.match(/\d+/g).map(Number);
+
+    const r = Math.round(rgb1[0] + factor * (rgb2[0] - rgb1[0]));
+    const g = Math.round(rgb1[1] + factor * (rgb2[1] - rgb1[1]));
+    const b = Math.round(rgb1[2] + factor * (rgb2[2] - rgb1[2]));
+
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
+export function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
