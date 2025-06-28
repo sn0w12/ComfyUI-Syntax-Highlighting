@@ -220,12 +220,12 @@ async function syncText(inputEl, overlayEl, tries = 1) {
 
     const processNode = (node) => {
         if (node.nodeType === Node.TEXT_NODE) {
-            // Split and wrap text nodes
             return node.textContent
                 .split(",")
                 .map((tag) => {
                     if (!tag.trim()) return tag;
-                    return `<span class="tag-span" data-tag="${tag.trim()}">${tag}</span>`;
+                    const escapedTag = tag.trim().replace(/"/g, "&quot;");
+                    return `<span class="tag-span" data-tag="${escapedTag}">${tag}</span>`;
                 })
                 .join(",");
         } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -234,8 +234,19 @@ async function syncText(inputEl, overlayEl, tries = 1) {
             const innerProcessed = Array.from(node.childNodes)
                 .map((child) => processNode(child))
                 .join("");
-            clone.innerHTML = innerProcessed;
-            return clone.outerHTML;
+            // Use textContent for text nodes to avoid HTML parsing
+            if (
+                node.childNodes.length === 1 &&
+                node.childNodes[0].nodeType === Node.TEXT_NODE
+            ) {
+                clone.textContent = node.textContent;
+                return `<span class="tag-span" data-tag="${node.textContent
+                    .trim()
+                    .replace(/"/g, "&quot;")}">${clone.outerHTML}</span>`;
+            } else {
+                clone.innerHTML = innerProcessed;
+                return clone.outerHTML;
+            }
         }
         return "";
     };
