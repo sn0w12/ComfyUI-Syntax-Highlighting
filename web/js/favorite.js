@@ -467,7 +467,7 @@ async function observeContextMenu(existingList) {
                 );
             });
         }
-    }, 100);
+    }, 50);
 
     const observer = new MutationObserver(handleMutations);
 
