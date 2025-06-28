@@ -63,6 +63,10 @@ app.registerExtension({
             node.widgets.forEach((widget) => {
                 if (widget.type === "combo") {
                     const value = widget.value;
+                    if (value.has_submenu) {
+                        // If the widget has a submenu, we don't add it to the main menu
+                        return;
+                    }
                     const isFavourite = existingList.includes(value);
 
                     const pathArray = value.split("\\");
@@ -150,6 +154,75 @@ function brightenColor(color, brightenAmount = 15) {
     return `rgb(${brighterRgb[0]}, ${brighterRgb[1]}, ${brighterRgb[2]})`;
 }
 
+function parseNestedMenuItem(str, depth = 0) {
+    if (!str.includes("::")) {
+        return { name: str, children: [], isLeaf: true, depth };
+    }
+
+    const colonIndex = str.indexOf("::");
+    const name = str.substring(0, colonIndex);
+    const content = str.substring(colonIndex + 3, str.length - 1); // Remove :: and trailing }
+
+    const children = [];
+    let current = "";
+    let braceCount = 0;
+    let i = 0;
+
+    while (i < content.length) {
+        const char = content[i];
+
+        if (char === "{") {
+            braceCount++;
+            current += char;
+        } else if (char === "}") {
+            braceCount--;
+            current += char;
+        } else if (char === "|" && braceCount === 0) {
+            if (current.trim()) {
+                children.push(parseNestedMenuItem(current.trim(), depth + 1));
+            }
+            current = "";
+        } else {
+            current += char;
+        }
+        i++;
+    }
+
+    if (current.trim()) {
+        children.push(parseNestedMenuItem(current.trim(), depth + 1));
+    }
+
+    return { name, children, isLeaf: false, depth };
+}
+
+function extractFilenameFromValue(value) {
+    if (!value) return value;
+
+    // Handle nested menu items
+    if (value.includes("::")) {
+        const parsed = parseNestedMenuItem(value);
+        return parsed.name; // Return the parent category name
+    }
+
+    // Handle regular file paths
+    if (value.includes("\\")) {
+        const pathArray = value.split("\\");
+        return pathArray[pathArray.length - 1];
+    }
+
+    return value;
+}
+
+function hasAnyFavoritedChildren(parsed, existingList) {
+    if (parsed.isLeaf) {
+        return existingList.includes(parsed.name);
+    }
+
+    return parsed.children.some((child) =>
+        hasAnyFavoritedChildren(child, existingList)
+    );
+}
+
 async function addStarsToFavourited(
     menuEntries,
     existingList,
@@ -207,11 +280,16 @@ async function addStarsToFavourited(
     });
 
     entriesToSort.forEach((entry) => {
-        const value = entry.getAttribute("data-value");
-        let filename = value;
-        if (value !== null && value.includes("\\")) {
-            const pathArray = value.split("\\");
-            filename = pathArray[pathArray.length - 1];
+        let value = entry.getAttribute("data-value");
+        let filename = extractFilenameFromValue(value);
+        let isStarred = false;
+
+        // Check if this entry or any of its children should be starred
+        if (value && value.includes("::")) {
+            const parsed = parseNestedMenuItem(value);
+            isStarred = hasAnyFavoritedChildren(parsed, existingList);
+        } else {
+            isStarred = existingList.includes(filename);
         }
 
         entry.addEventListener("mouseover", () => {
@@ -249,7 +327,7 @@ async function addStarsToFavourited(
             removeAllPreviewImages();
         });
 
-        if (existingList.includes(filename)) {
+        if (isStarred) {
             // Create star element
             const star = document.createElement("span");
             star.innerHTML = "★";
@@ -375,17 +453,19 @@ async function observeContextMenu(existingList) {
             return;
         }
 
-        const litecontextmenu =
-            document.getElementsByClassName("litecontextmenu")[0];
-        if (litecontextmenu) {
-            const menuEntries =
-                litecontextmenu.querySelectorAll(".litemenu-entry");
-            addStarsToFavourited(
-                menuEntries,
-                existingList,
-                images.images,
-                settings
-            );
+        const litecontextmenus =
+            document.getElementsByClassName("litecontextmenu");
+        if (litecontextmenus) {
+            Array.from(litecontextmenus).forEach((litecontextmenu) => {
+                const menuEntries =
+                    litecontextmenu.querySelectorAll(".litemenu-entry");
+                addStarsToFavourited(
+                    menuEntries,
+                    existingList,
+                    images.images,
+                    settings
+                );
+            });
         }
     }, 100);
 
