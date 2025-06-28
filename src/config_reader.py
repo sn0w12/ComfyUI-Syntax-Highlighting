@@ -5,14 +5,15 @@ import folder_paths
 
 class ConfigReader:
     """
-    Handles reading and managing configuration settings for ComfyUI without using the API.
+    Handles reading and managing configuration settings for ComfyUI without using the API. Currently cannot handle multiple users.
 
     Methods:
+
     get_setting(setting_id, default)
         Retrieve a setting value from the configuration file.
 
-    is_comfy_portable()
-        Check if comfy is running in portable mode.
+    set_setting(setting_id, value)
+        Set a setting value in the configuration file. If value is None, it removes the setting
     """
 
     user_directory = folder_paths.get_user_directory()
