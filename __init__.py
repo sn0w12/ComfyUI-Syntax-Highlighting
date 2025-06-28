@@ -5,6 +5,7 @@ import folder_paths
 from server import PromptServer
 from aiohttp import web
 
+from .src.config_reader import ConfigReader
 from .src.save_preview_image import SavePreviewImage
 
 WEB_DIRECTORY = "./web"
@@ -90,3 +91,9 @@ async def get_enabled(request):
 async def index_images_endpoint(request):
     success = index_images()
     return web.json_response({"success": success})
+
+
+@PromptServer.instance.routes.get(f"{API_PREFIX}/favorites")
+async def favorites_endpoint(request):
+    favorites = ConfigReader.get_setting("SyntaxHighlighting.favorites", [])
+    return web.json_response({"favorites": favorites})
