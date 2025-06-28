@@ -229,22 +229,35 @@ async function syncText(inputEl, overlayEl, tries = 1) {
                 })
                 .join(",");
         } else if (node.nodeType === Node.ELEMENT_NODE) {
-            // For element nodes, preserve attributes but process inner content
-            const clone = node.cloneNode(false); // Shallow clone to keep attributes
-            const innerProcessed = Array.from(node.childNodes)
-                .map((child) => processNode(child))
-                .join("");
-            // Use textContent for text nodes to avoid HTML parsing
-            if (
-                node.childNodes.length === 1 &&
-                node.childNodes[0].nodeType === Node.TEXT_NODE
-            ) {
-                clone.textContent = node.textContent;
-                return `<span class="tag-span" data-tag="${node.textContent
-                    .trim()
-                    .replace(/"/g, "&quot;")}">${clone.outerHTML}</span>`;
+            const textContent = node.textContent;
+
+            // If the element contains commas, we need to process it for tag spans
+            if (textContent.includes(",")) {
+                const tags = textContent.split(",");
+                let result = node.outerHTML;
+
+                // Replace each tag in the HTML with a tagged version
+                tags.forEach((tag, index) => {
+                    if (tag.trim()) {
+                        const escapedTag = tag.trim().replace(/"/g, "&quot;");
+                        const tagRegex = new RegExp(
+                            `(${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+                            "g"
+                        );
+                        result = result.replace(
+                            tagRegex,
+                            `<span class="tag-span" data-tag="${escapedTag}">$1</span>`
+                        );
+                    }
+                });
+                return result;
             } else {
-                clone.innerHTML = innerProcessed;
+                const clone = node.cloneNode(true);
+                const trimmedText = textContent.trim();
+                if (trimmedText) {
+                    const escapedTag = trimmedText.replace(/"/g, "&quot;");
+                    return `<span class="tag-span" data-tag="${escapedTag}">${clone.outerHTML}</span>`;
+                }
                 return clone.outerHTML;
             }
         }
