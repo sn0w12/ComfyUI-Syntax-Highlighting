@@ -486,18 +486,35 @@ async function addPreviewImage(entry, path, settings) {
     const preferredSide = settings["Preview Image Side"];
     const maxSize = settings["Preview Image Size"];
 
-    const preview = document.createElement("img");
-    preview.className = "preview-image";
-    preview.src = path;
-    preview.style.maxWidth = `${maxSize}px`;
-    preview.style.maxHeight = `${maxSize}px`;
-    preview.style.position = "fixed";
+    // Create temporary image to get dimensions
+    const tempImg = new Image();
+    tempImg.src = path;
+
+    // Wait for image to load to get actual dimensions
+    await new Promise((resolve) => {
+        tempImg.onload = resolve;
+        tempImg.onerror = resolve;
+    });
 
     const rect = entry.getBoundingClientRect();
     const extraRightPadding = 10;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
+
+    // Calculate actual display dimensions while maintaining aspect ratio
+    const originalWidth = tempImg.naturalWidth || maxSize;
+    const originalHeight = tempImg.naturalHeight || maxSize;
+    const aspectRatio = originalWidth / originalHeight;
+
+    let actualWidth, actualHeight;
+    if (originalWidth > originalHeight) {
+        actualWidth = Math.min(maxSize, originalWidth);
+        actualHeight = actualWidth / aspectRatio;
+    } else {
+        actualHeight = Math.min(maxSize, originalHeight);
+        actualWidth = actualHeight * aspectRatio;
+    }
 
     // Get all context menus to avoid overlapping
     const contextMenus = document.getElementsByClassName("litecontextmenu");
@@ -509,89 +526,214 @@ async function addPreviewImage(entry, path, settings) {
     const wouldOverlapWithMenu = (left, top, width, height) => {
         return menuRects.some((menuRect) => {
             return !(
-                left > menuRect.right ||
-                left + width < menuRect.left ||
-                top > menuRect.bottom ||
-                top + height < menuRect.top
+                left >= menuRect.right ||
+                left + width <= menuRect.left ||
+                top >= menuRect.bottom ||
+                top + height <= menuRect.top
             );
         });
     };
 
-    // Check if preferred side has enough space and won't overlap with menus
-    const hasSpaceOnLeft = rect.left >= maxSize + padding;
-    const hasSpaceOnRight = rect.right + maxSize + padding <= viewportWidth;
+    // Function to find alternative position beside overlapping menus
+    const findAlternativePosition = (
+        preferredLeft,
+        top,
+        width,
+        height,
+        isLeftSide
+    ) => {
+        const overlappingMenus = menuRects.filter((menuRect) => {
+            return !(
+                preferredLeft >= menuRect.right ||
+                preferredLeft + width <= menuRect.left ||
+                top >= menuRect.bottom ||
+                top + height <= menuRect.top
+            );
+        });
 
-    let leftPosition, rightPosition;
-    let useLeft = false,
-        useRight = false;
+        if (overlappingMenus.length === 0) {
+            return preferredLeft;
+        }
 
+        // Try to position beside the overlapping menus
+        for (const menuRect of overlappingMenus) {
+            let alternativeLeft;
+
+            if (isLeftSide) {
+                // Try to the left of the overlapping menu
+                alternativeLeft = menuRect.left - width - padding;
+                if (
+                    alternativeLeft >= 0 &&
+                    !wouldOverlapWithMenu(alternativeLeft, top, width, height)
+                ) {
+                    return alternativeLeft;
+                }
+            } else {
+                // Try to the right of the overlapping menu
+                alternativeLeft = menuRect.right + padding;
+                if (
+                    alternativeLeft + width <= viewportWidth &&
+                    !wouldOverlapWithMenu(alternativeLeft, top, width, height)
+                ) {
+                    return alternativeLeft;
+                }
+            }
+        }
+
+        return null; // No alternative position found
+    };
+
+    // Check if sides have enough space
+    const hasSpaceOnLeft = rect.left >= actualWidth + padding;
+    const hasSpaceOnRight =
+        rect.right + actualWidth + padding + extraRightPadding <= viewportWidth;
+
+    let leftPosition;
+    let positioned = false;
+
+    // Try preferred side first
     if (preferredSide === "left" && hasSpaceOnLeft) {
-        leftPosition = rect.left - maxSize - padding;
-        if (!wouldOverlapWithMenu(leftPosition, rect.top, maxSize, maxSize)) {
-            useLeft = true;
-            preview.style.left = `${leftPosition}px`;
+        leftPosition = rect.left - actualWidth - padding;
+        if (
+            !wouldOverlapWithMenu(
+                leftPosition,
+                rect.top,
+                actualWidth,
+                actualHeight
+            )
+        ) {
+            positioned = true;
+        } else {
+            // Try to find alternative position on the left side
+            const alternativeLeft = findAlternativePosition(
+                leftPosition,
+                rect.top,
+                actualWidth,
+                actualHeight,
+                true
+            );
+            if (alternativeLeft !== null) {
+                leftPosition = alternativeLeft;
+                positioned = true;
+            }
         }
     } else if (preferredSide === "right" && hasSpaceOnRight) {
         leftPosition = rect.right + padding + extraRightPadding;
-        if (!wouldOverlapWithMenu(leftPosition, rect.top, maxSize, maxSize)) {
-            useRight = true;
-            preview.style.left = `${leftPosition}px`;
+        if (
+            !wouldOverlapWithMenu(
+                leftPosition,
+                rect.top,
+                actualWidth,
+                actualHeight
+            )
+        ) {
+            positioned = true;
+        } else {
+            // Try to find alternative position on the right side
+            const alternativeLeft = findAlternativePosition(
+                leftPosition,
+                rect.top,
+                actualWidth,
+                actualHeight,
+                false
+            );
+            if (alternativeLeft !== null) {
+                leftPosition = alternativeLeft;
+                positioned = true;
+            }
         }
     }
 
-    // Fallback logic if preferred side doesn't work
-    if (!useLeft && !useRight) {
-        if (hasSpaceOnLeft) {
-            leftPosition = rect.left - maxSize - padding;
-            if (
-                !wouldOverlapWithMenu(leftPosition, rect.top, maxSize, maxSize)
-            ) {
-                useLeft = true;
-                preview.style.left = `${leftPosition}px`;
-            }
-        }
-
-        if (!useLeft && hasSpaceOnRight) {
+    // Try fallback sides if preferred side didn't work
+    if (!positioned) {
+        if (hasSpaceOnRight) {
             leftPosition = rect.right + padding + extraRightPadding;
             if (
-                !wouldOverlapWithMenu(leftPosition, rect.top, maxSize, maxSize)
+                !wouldOverlapWithMenu(
+                    leftPosition,
+                    rect.top,
+                    actualWidth,
+                    actualHeight
+                )
             ) {
-                useRight = true;
-                preview.style.left = `${leftPosition}px`;
-            }
-        }
-
-        // Final fallback - place on preferred side even if it might overlap
-        if (!useLeft && !useRight) {
-            if (preferredSide === "left" && hasSpaceOnLeft) {
-                preview.style.left = `${rect.left - maxSize - padding}px`;
-            } else if (preferredSide === "right" && hasSpaceOnRight) {
-                preview.style.left = `${
-                    rect.right + padding + extraRightPadding
-                }px`;
-            } else if (hasSpaceOnRight) {
-                preview.style.left = `${
-                    rect.right + padding + extraRightPadding
-                }px`;
+                positioned = true;
             } else {
-                preview.style.left = `${rect.left - maxSize - padding}px`;
+                const alternativeLeft = findAlternativePosition(
+                    leftPosition,
+                    rect.top,
+                    actualWidth,
+                    actualHeight,
+                    false
+                );
+                if (alternativeLeft !== null) {
+                    leftPosition = alternativeLeft;
+                    positioned = true;
+                }
+            }
+        }
+
+        if (!positioned && hasSpaceOnLeft) {
+            leftPosition = rect.left - actualWidth - padding;
+            if (
+                !wouldOverlapWithMenu(
+                    leftPosition,
+                    rect.top,
+                    actualWidth,
+                    actualHeight
+                )
+            ) {
+                positioned = true;
+            } else {
+                const alternativeLeft = findAlternativePosition(
+                    leftPosition,
+                    rect.top,
+                    actualWidth,
+                    actualHeight,
+                    true
+                );
+                if (alternativeLeft !== null) {
+                    leftPosition = alternativeLeft;
+                    positioned = true;
+                }
             }
         }
     }
 
-    const estimatedHeight = Math.min(maxSize, preview.naturalHeight || maxSize);
-    let topPosition = rect.top;
-
-    if (rect.top + estimatedHeight > viewportHeight - padding) {
-        topPosition = viewportHeight - estimatedHeight - padding;
+    // Final fallback - use preferred side regardless of overlap
+    if (!positioned) {
+        if (preferredSide === "left" && hasSpaceOnLeft) {
+            leftPosition = rect.left - actualWidth - padding;
+        } else if (hasSpaceOnRight) {
+            leftPosition = rect.right + padding + extraRightPadding;
+        } else {
+            leftPosition = rect.left - actualWidth - padding;
+        }
     }
 
+    // Calculate top position
+    let topPosition = rect.top;
+    if (rect.top + actualHeight > viewportHeight - padding) {
+        topPosition = Math.max(
+            padding,
+            viewportHeight - actualHeight - padding
+        );
+    }
+
+    // Create and position the actual preview image
+    const preview = document.createElement("img");
+    preview.className = "preview-image";
+    preview.src = path;
+    preview.style.maxWidth = `${maxSize}px`;
+    preview.style.maxHeight = `${maxSize}px`;
+    preview.style.position = "fixed";
+    preview.style.left = `${leftPosition}px`;
     preview.style.top = `${topPosition}px`;
+
     document.body.appendChild(preview);
 
     setTimeout(() => {
         preview.classList.add("fade-in");
-    }, 100);
+    }, 10);
 }
 
 const removingImages = new WeakSet();
