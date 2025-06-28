@@ -1,4 +1,4 @@
-import { SettingsHelper } from "./settings/ComfyHelper.js";
+import { SettingsHelper, UiHelper } from "./settings/ComfyHelper.js";
 
 export const API_PREFIX = "/SyntaxHighlighting";
 export const settingsHelper = new SettingsHelper("SyntaxHighlighting");
@@ -86,7 +86,24 @@ const settingsDefinitions = [
         name: "Index Images",
         category: ["Syntax Highlighting", "Preview Image", "IndexImages"],
         type: SettingsHelper.ST.BUTTON("Index Images", async () => {
-            await fetch(`${API_PREFIX}/index`);
+            const response = await fetch(`${API_PREFIX}/index`);
+            if (!response.ok) {
+                settingsHelper.uiHelper.addToast(
+                    UiHelper.Severity.ERROR,
+                    "Indexing Images Failed",
+                    "",
+                    5000
+                );
+                return;
+            }
+
+            const data = await response.json();
+            settingsHelper.uiHelper.addToast(
+                UiHelper.Severity.INFO,
+                "Indexing Images",
+                `Indexed ${data.count} images.`,
+                5000
+            );
             SettingsHelper.PresetOnChange.reloadSettings();
         }),
         tooltip: "Update images available for preview.",

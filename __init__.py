@@ -31,7 +31,7 @@ def index_images():
         # Ensure directory exists
         if not images_dir.exists():
             print(f"Warning: Directory not found: {images_dir}")
-            return False
+            return {"success": False}
 
         # Get all image files recursively
         image_files = []
@@ -59,11 +59,12 @@ def index_images():
             json.dump(output, f, indent=2)
 
         print(f"Created index with {len(images)} images at {json_path}")
-        return True
+        return_data = {"success": True, "count": len(images)}
+        return return_data
 
     except Exception as e:
         print(f"Error creating image index: {str(e)}")
-        return False
+        return {"success": False}
 
 
 # Create image index
@@ -89,8 +90,8 @@ async def get_enabled(request):
 
 @PromptServer.instance.routes.get(f"{API_PREFIX}/index")
 async def index_images_endpoint(request):
-    success = index_images()
-    return web.json_response({"success": success})
+    data = index_images()
+    return web.json_response(data)
 
 
 @PromptServer.instance.routes.get(f"{API_PREFIX}/favorites")
