@@ -69,24 +69,30 @@ app.registerExtension({
                     }
                     const isFavourite = existingList.includes(value);
 
-                    const pathArray = value.split("\\");
-                    const filename = pathArray[pathArray.length - 1];
-                    const displayValue = filename.split(".")[0];
+                    try {
+                        const pathArray = value.split("\\");
+                        const filename = pathArray[pathArray.length - 1];
+                        const displayValue = filename.split(".")[0];
 
-                    menuItems.push({
-                        content: isFavourite
-                            ? `Unfavourite ${displayValue} ☆`
-                            : `Favourite ${displayValue} ★`,
-                        disabled: false,
-                        callback: () => {
-                            toggleFavourite(
-                                existingList,
-                                filename,
-                                "SyntaxHighlighting.favorites"
-                            );
-                        },
-                        originalValue: value,
-                    });
+                        menuItems.push({
+                            content: isFavourite
+                                ? `Unfavourite ${displayValue} ☆`
+                                : `Favourite ${displayValue} ★`,
+                            disabled: false,
+                            callback: () => {
+                                toggleFavourite(
+                                    existingList,
+                                    filename,
+                                    "SyntaxHighlighting.favorites"
+                                );
+                            },
+                            originalValue: value,
+                        });
+                    } catch (error) {
+                        console.error(
+                            `Error processing value "${value}": ${error}`
+                        );
+                    }
                 }
             });
 
