@@ -340,8 +340,12 @@ async function addStarsToFavourited(
             star.style.marginLeft = "auto";
             star.style.alignSelf = "center";
 
-            entry.style.display = "flex";
-            entry.style.alignItems = "center";
+            // Only set display flex if the entry is not hidden
+            const currentDisplay = window.getComputedStyle(entry).display;
+            if (currentDisplay !== "none") {
+                entry.style.display = "flex";
+                entry.style.alignItems = "center";
+            }
 
             if (!entry.querySelector("span")) {
                 entry.appendChild(star);
