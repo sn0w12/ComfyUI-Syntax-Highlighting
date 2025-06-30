@@ -437,29 +437,14 @@ async function observeContextMenu(existingList) {
     }
 
     const handleMutations = leadingEdgeDebounce(function (mutations) {
-        let isPreviewImage = false;
+        let isContextMenu = false;
         mutations.forEach((mutation) => {
-            mutation.addedNodes.forEach((node) => {
-                if (
-                    node.classList &&
-                    node.classList.contains("preview-image")
-                ) {
-                    isPreviewImage = true;
-                    return;
-                }
-            });
-            mutation.removedNodes.forEach((node) => {
-                if (
-                    node.classList &&
-                    node.classList.contains("preview-image")
-                ) {
-                    isPreviewImage = true;
-                    return;
-                }
-            });
+            if (mutation.target.classList.contains("litecontextmenu")) {
+                isContextMenu = true;
+            }
         });
 
-        if (isPreviewImage) {
+        if (!isContextMenu) {
             return;
         }
 
