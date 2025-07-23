@@ -60,7 +60,7 @@ app.registerExtension({
             // Collect menu items first
             const menuItems = [];
 
-            node.widgets.forEach((widget) => {
+            node.widgets?.forEach((widget) => {
                 if (widget.type === "combo") {
                     const value = widget.value;
                     if (value.has_submenu) {
