@@ -6,25 +6,18 @@ import folder_paths
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 from comfy.cli_args import args
+from .util import get_preview_image_path
 
 
 class SavePreviewImage:
     def __init__(self):
         self.type = "temp"
         self.compress_level = 4
-        base_dir = self.get_base_dir()
-        self.output_dir = os.path.join(base_dir, "web/images")
+        self.output_dir = get_preview_image_path()
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.temp_output_dir = folder_paths.get_temp_directory()
         self.prefix_append = "_temp_" + "".join(random.choice("abcdefghijklmnopqrstupvxyz") for x in range(5))
-
-    @classmethod
-    def get_base_dir(cls):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        if os.path.basename(dir_path) == "src":
-            dir_path = os.path.dirname(dir_path)
-        return dir_path
 
     @classmethod
     def INPUT_TYPES(s):

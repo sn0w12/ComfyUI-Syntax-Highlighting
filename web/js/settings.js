@@ -48,6 +48,17 @@ const settingsDefinitions = [
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
+        name: "Preview Image Save Path",
+        category: [
+            "Syntax Highlighting",
+            "Preview Image",
+            "PreviewImageSavePath",
+        ],
+        defaultValue: "./web/images",
+        type: SettingsHelper.ST.TEXT,
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
+    },
+    {
         name: "Preview Image Hover Delay",
         category: ["Syntax Highlighting", "Preview Image", "PreviewImageDelay"],
         defaultValue: 200,

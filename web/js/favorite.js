@@ -1,9 +1,8 @@
-import { SettingsHelper } from "./settings/ComfyHelper.js";
+import { settingsHelper, API_PREFIX } from "./settings.js";
 import { hexToRgb, leadingEdgeDebounce } from "./util.js";
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 
-const settingsHelper = new SettingsHelper("SyntaxHighlighting");
 let contextMenuObserver = null;
 let favoritesCache = null;
 
@@ -428,9 +427,9 @@ async function observeContextMenu(existingList) {
     document.head.appendChild(style);
     let images;
     try {
-        images = await fetch(
-            "/extensions/ComfyUI-Syntax-Highlight/images/images.json"
-        ).then((response) => response.json());
+        images = await fetch(`${API_PREFIX}/images_json`).then((response) =>
+            response.json()
+        );
     } catch (error) {
         console.error("Error fetching images.json:", error);
         images = { images: [] };
@@ -483,7 +482,7 @@ async function addPreviewImage(entry, path, settings) {
 
     // Create temporary image to get dimensions
     const tempImg = new Image();
-    tempImg.src = path;
+    tempImg.src = `${API_PREFIX}/images/${path.split("/").pop().split(".")[0]}`;
 
     // Wait for image to load to get actual dimensions
     await new Promise((resolve) => {
@@ -717,7 +716,7 @@ async function addPreviewImage(entry, path, settings) {
     // Create and position the actual preview image
     const preview = document.createElement("img");
     preview.className = "preview-image";
-    preview.src = path;
+    preview.src = `${API_PREFIX}/images/${path.split("/").pop().split(".")[0]}`;
     preview.style.maxWidth = `${maxSize}px`;
     preview.style.maxHeight = `${maxSize}px`;
     preview.style.position = "fixed";
