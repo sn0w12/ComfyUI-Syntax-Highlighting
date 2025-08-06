@@ -1,5 +1,6 @@
 import { settingsHelper, API_PREFIX } from "./settings.js";
 import { hexToRgb, leadingEdgeDebounce } from "./util.js";
+import { SettingsHelper } from "./settings/ComfyHelper.js";
 import { app } from "../../../scripts/app.js";
 import { api } from "../../../scripts/api.js";
 
