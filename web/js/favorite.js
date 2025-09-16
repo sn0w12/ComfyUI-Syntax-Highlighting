@@ -714,10 +714,13 @@ async function addPreviewImage(entry, path, settings) {
         );
     }
 
+    const normalizedPath = path.replace(/\\/g, "/");
+    const imageName = normalizedPath.split("/").pop().split(".")[0];
+
     // Create and position the actual preview image
     const preview = document.createElement("img");
     preview.className = "preview-image";
-    preview.src = `${API_PREFIX}/images/${path.split("/").pop().split(".")[0]}`;
+    preview.src = `${API_PREFIX}/images/${imageName}`;
     preview.style.maxWidth = `${maxSize}px`;
     preview.style.maxHeight = `${maxSize}px`;
     preview.style.position = "fixed";
