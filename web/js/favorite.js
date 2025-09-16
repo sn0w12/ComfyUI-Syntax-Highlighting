@@ -304,11 +304,13 @@ async function addStarsToFavourited(
             hoverTimer = setTimeout(() => {
                 const imageFileName = filename
                     .split(".")[0]
-                    .replaceAll(/\(.*?\)/g, "")
+                    .replaceAll(/\([^)]*\)/g, "")
+                    .replaceAll(/[()]/g, "")
                     .trim()
                     .replaceAll(" ", "_")
                     .toLowerCase();
 
+                console.log("Looking for image:", imageFileName);
                 const imageData = previewImages.find(
                     (img) =>
                         img.filename
@@ -436,44 +438,37 @@ async function observeContextMenu(existingList) {
         images = { images: [] };
     }
 
-    const handleMutations = leadingEdgeDebounce(function (mutations) {
-        let isContextMenu = false;
-        mutations.forEach((mutation) => {
-            if (mutation.target.classList.contains("litecontextmenu")) {
-                isContextMenu = true;
-            }
-        });
+    const processedMenus = new Set();
+    let animationFrameId = null;
 
-        if (!isContextMenu) {
-            return;
-        }
-
-        const litecontextmenus =
-            document.getElementsByClassName("litecontextmenu");
-        if (litecontextmenus) {
-            Array.from(litecontextmenus).forEach((litecontextmenu) => {
-                const menuEntries =
-                    litecontextmenu.querySelectorAll(".litemenu-entry");
+    const pollForMenus = () => {
+        const currentMenus = document.querySelectorAll(".litecontextmenu");
+        currentMenus.forEach((menu) => {
+            if (!processedMenus.has(menu)) {
+                processedMenus.add(menu);
+                const menuEntries = menu.querySelectorAll(".litemenu-entry");
                 addStarsToFavourited(
                     menuEntries,
                     existingList,
                     images.images,
                     settings
                 );
-            });
-        }
-    }, 50);
+            }
+        });
 
-    const observer = new MutationObserver(handleMutations);
+        animationFrameId = requestAnimationFrame(pollForMenus);
+    };
 
-    observer.observe(document, {
-        attributes: false,
-        childList: true,
-        characterData: false,
-        subtree: true,
-    });
-
-    return observer;
+    animationFrameId = requestAnimationFrame(pollForMenus);
+    return {
+        disconnect: () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            processedMenus.clear();
+        },
+    };
 }
 
 async function addPreviewImage(entry, path, settings) {
