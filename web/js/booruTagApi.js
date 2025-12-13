@@ -2,6 +2,8 @@ export class BooruApi {
     constructor() {
         this.baseUrl = "https://danbooru.donmai.us";
         this.wikiUrl = `${this.baseUrl}/wiki_pages`;
+        // Use proxy endpoint to avoid CSP violations
+        this.proxyUrl = "/SyntaxHighlighting/wiki";
         this.parser = new DOMParser();
 
         this.fetchCache = {};
@@ -22,7 +24,7 @@ export class BooruApi {
             return this.fetchCache[url];
         }
 
-        const { responseType = "json" } = options;
+        const { responseType = "json", useProxy = false } = options;
         try {
             const response = await fetch(url);
             if (!response.ok) {
@@ -37,7 +39,14 @@ export class BooruApi {
             }
 
             let data;
-            if (responseType === "html") {
+            if (useProxy) {
+                // When using proxy, the response is already JSON with {success, data} structure
+                const jsonResponse = await response.json();
+                if (!jsonResponse.success) {
+                    return jsonResponse;
+                }
+                data = jsonResponse.data;
+            } else if (responseType === "html") {
                 data = await response.text();
             } else {
                 data = await response.json();
@@ -68,12 +77,14 @@ export class BooruApi {
     }
 
     async getTagDescription(tag) {
-        const url = `${this.wikiUrl}/${this.cleanTag(tag)}`;
-        const response = await this.#fetch(url, { responseType: "html" });
+        const cleanedTag = this.cleanTag(tag);
+        // Use proxy endpoint to avoid CSP violations
+        const url = `${this.proxyUrl}/${cleanedTag}`;
+        const response = await this.#fetch(url, { responseType: "html", useProxy: true });
         if (!response.success) {
             return null;
         }
         const body = this.getElementById(response.data, "wiki-page-body");
-        return body.querySelector("p").textContent;
+        return body?.querySelector("p")?.textContent || null;
     }
 }
