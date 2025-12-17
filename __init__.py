@@ -4,6 +4,7 @@ from pathlib import Path
 import folder_paths
 from server import PromptServer
 from aiohttp import web
+import aiohttp
 
 from .src.config_reader import ConfigReader
 from .src.save_preview_image import SavePreviewImage
@@ -130,3 +131,49 @@ async def serve_image(request):
     if img_path and Path(img_path).exists():
         return web.FileResponse(path=img_path)
     return web.Response(status=404, text="Image not found")
+
+
+@PromptServer.instance.routes.get(f"{API_PREFIX}/wiki/{{tag}}")
+async def fetch_wiki_page(request):
+    """
+    Proxy endpoint to fetch Danbooru wiki pages.
+    This avoids CSP violations by making the request server-side.
+    """
+    tag = request.match_info["tag"]
+    if not tag:
+        return web.Response(status=400, text="Tag is required")
+
+    # Clean the tag similar to frontend logic
+    tag = tag.strip()
+
+    url = f"https://danbooru.donmai.us/wiki_pages/{tag}"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status != 200:
+                    return web.json_response({
+                        "success": False,
+                        "error": {
+                            "status": response.status,
+                            "message": f"HTTP error! status: {response.status}",
+                            "url": url,
+                        }
+                    }, status=response.status)
+
+                html_content = await response.text()
+                return web.json_response({
+                    "success": True,
+                    "data": html_content
+                })
+    except aiohttp.ClientError as e:
+        return web.json_response({ "success": False, "error": { "message": str(e), "url": url, }
+        }, status=500)
+    except Exception as e:
+        return web.json_response({
+            "success": False,
+            "error": {
+                "message": f"Unexpected error: {str(e)}",
+                "url": url,
+            }
+        }, status=500)
