@@ -276,11 +276,23 @@ async function syncText(inputEl, overlayEl, tries = 1) {
     overlayEl.innerHTML = result;
 }
 
+// Track the current tooltip request to allow cancellation
+let currentTooltipRequest = null;
+
 async function showTagTooltip(element, tag) {
-    let tooltip = document.getElementById("tag-tooltip");
+    // Create a cancellation token for this request
+    const requestId = Symbol('tooltip-request');
+    currentTooltipRequest = requestId;
+
     const description =
         (await booruApi.getTagDescription(tag)) ?? "No description available.";
 
+    // Check if this request was cancelled while we were fetching
+    if (currentTooltipRequest !== requestId) {
+        return;
+    }
+
+    let tooltip = document.getElementById("tag-tooltip");
     if (!tooltip) {
         tooltip = document.createElement("div");
         tooltip.id = "tag-tooltip";
@@ -329,6 +341,9 @@ async function showTagTooltip(element, tag) {
 }
 
 function hideTagTooltip() {
+    // Cancel any pending tooltip request
+    currentTooltipRequest = null;
+
     const tooltips = document.querySelectorAll("#tag-tooltip");
     tooltips.forEach((tooltip) => {
         tooltip.remove();
