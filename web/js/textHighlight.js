@@ -281,16 +281,8 @@ let currentTooltipRequest = null;
 
 async function showTagTooltip(element, tag) {
     // Create a cancellation token for this request
-    const requestId = Symbol('tooltip-request');
+    const requestId = Symbol("tooltip-request");
     currentTooltipRequest = requestId;
-
-    const description =
-        (await booruApi.getTagDescription(tag)) ?? "No description available.";
-
-    // Check if this request was cancelled while we were fetching
-    if (currentTooltipRequest !== requestId) {
-        return;
-    }
 
     let tooltip = document.getElementById("tag-tooltip");
     if (!tooltip) {
@@ -316,6 +308,30 @@ async function showTagTooltip(element, tag) {
     tooltip.style.left = `${rect.left}px`;
     tooltip.style.top = `${rect.bottom + 5}px`;
 
+    // Initially set content to loading
+    tooltip.innerHTML = "<div>Loading...</div>";
+    tooltip.style.display = "none";
+
+    let tooltipShown = false;
+    const loadingTimeout = setTimeout(() => {
+        if (currentTooltipRequest === requestId) {
+            tooltip.style.display = "block";
+            tooltipShown = true;
+        }
+    }, 100);
+
+    const description =
+        (await booruApi.getTagDescription(tag)) ?? "No description available.";
+
+    // Check if this request was cancelled while we were fetching
+    if (currentTooltipRequest !== requestId) {
+        clearTimeout(loadingTimeout);
+        return;
+    }
+
+    // Clear the loading timeout
+    clearTimeout(loadingTimeout);
+
     // Create tooltip content with title and description
     const titleElement = document.createElement("div");
     titleElement.style.cssText = `
@@ -337,7 +353,10 @@ async function showTagTooltip(element, tag) {
     `;
     descElement.textContent = description;
     tooltip.appendChild(descElement);
-    tooltip.style.display = "block";
+
+    if (!tooltipShown) {
+        tooltip.style.display = "block";
+    }
 }
 
 function hideTagTooltip() {
