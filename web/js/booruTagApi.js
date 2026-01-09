@@ -6,7 +6,49 @@ export class BooruApi {
         this.proxyUrl = "/SyntaxHighlighting/wiki";
         this.parser = new DOMParser();
 
-        this.fetchCache = {};
+        this.cache = {};
+        this.MAX_CACHE_SIZE = 1000;
+        this.loadCache();
+    }
+
+    loadCache() {
+        try {
+            const stored = localStorage.getItem("booruTagCache");
+            if (stored) {
+                this.cache = JSON.parse(stored);
+                // Clean up very old entries (older than 30 days)
+                const now = Date.now();
+                const veryOldThreshold = 30 * 86400000; // 30 days
+                for (const key in this.cache) {
+                    if (now - this.cache[key].timestamp > veryOldThreshold) {
+                        delete this.cache[key];
+                    }
+                }
+                // Trim if still too many
+                if (Object.keys(this.cache).length > this.MAX_CACHE_SIZE) {
+                    this.trimCache();
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to load cache from localStorage", e);
+        }
+    }
+
+    saveCache() {
+        try {
+            localStorage.setItem("booruTagCache", JSON.stringify(this.cache));
+        } catch (e) {
+            console.warn("Failed to save cache to localStorage", e);
+        }
+    }
+
+    trimCache() {
+        const entries = Object.entries(this.cache).sort(
+            (a, b) => a[1].timestamp - b[1].timestamp
+        );
+        const toRemove = entries.slice(0, entries.length - this.MAX_CACHE_SIZE);
+        toRemove.forEach(([key]) => delete this.cache[key]);
+        this.saveCache();
     }
 
     cleanTag(tag) {
@@ -20,10 +62,6 @@ export class BooruApi {
     }
 
     async #fetch(url, options = {}) {
-        if (this.fetchCache[url]) {
-            return this.fetchCache[url];
-        }
-
         const { responseType = "json", useProxy = false } = options;
         try {
             const response = await fetch(url);
@@ -52,11 +90,10 @@ export class BooruApi {
                 data = await response.json();
             }
 
-            this.fetchCache[url] = {
+            return {
                 success: true,
                 data: data,
             };
-            return this.fetchCache[url];
         } catch (error) {
             console.error(`Failed to fetch ${url}:`, error);
             return {
@@ -78,13 +115,76 @@ export class BooruApi {
 
     async getTagDescription(tag) {
         const cleanedTag = this.cleanTag(tag);
-        // Use proxy endpoint to avoid CSP violations
+
+        // Check cache
+        if (this.cache[cleanedTag]) {
+            const entry = this.cache[cleanedTag];
+            const now = Date.now();
+            const staleThreshold = 86400000; // 24 hours
+
+            if (now - entry.timestamp < staleThreshold) {
+                // Fresh data
+                return entry.description;
+            } else {
+                // Stale data: return it and revalidate in background
+                // Revalidate in background
+                (async () => {
+                    try {
+                        const url = `${this.proxyUrl}/${cleanedTag}`;
+                        const response = await this.#fetch(url, {
+                            responseType: "html",
+                            useProxy: true,
+                        });
+                        if (response.success) {
+                            const body = this.getElementById(
+                                response.data,
+                                "wiki-page-body"
+                            );
+                            const newDescription =
+                                body?.querySelector("p")?.textContent || null;
+                            // Update cache with fresh data
+                            this.cache[cleanedTag] = {
+                                description: newDescription,
+                                timestamp: Date.now(),
+                            };
+                            this.saveCache();
+                            // Trim cache if it exceeds max size
+                            if (
+                                Object.keys(this.cache).length >
+                                this.MAX_CACHE_SIZE
+                            ) {
+                                this.trimCache();
+                            }
+                        }
+                    } catch (e) {
+                        console.warn("Background revalidation failed", e);
+                    }
+                })();
+                return entry.description;
+            }
+        }
+
+        // No cache: fetch fresh
         const url = `${this.proxyUrl}/${cleanedTag}`;
-        const response = await this.#fetch(url, { responseType: "html", useProxy: true });
+        const response = await this.#fetch(url, {
+            responseType: "html",
+            useProxy: true,
+        });
         if (!response.success) {
             return null;
         }
         const body = this.getElementById(response.data, "wiki-page-body");
-        return body?.querySelector("p")?.textContent || null;
+        const description = body?.querySelector("p")?.textContent || null;
+
+        // Cache the result
+        this.cache[cleanedTag] = { description, timestamp: Date.now() };
+        this.saveCache();
+
+        // Trim cache if it exceeds max size
+        if (Object.keys(this.cache).length > this.MAX_CACHE_SIZE) {
+            this.trimCache();
+        }
+
+        return description;
     }
 }
