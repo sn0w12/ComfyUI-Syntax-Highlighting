@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import re
 import numpy as np
 import folder_paths
 from PIL import Image
@@ -48,11 +49,16 @@ class SavePreviewImage:
     CATEGORY = "image"
     DESCRIPTION = "Saves the input images to the preview directory."
 
+    @classmethod
+    def slugify(cls, text):
+        # Slugify: lowercase, replace non-alphanumeric sequences with '_', strip leading/trailing '_'
+        return re.sub(r"\W+", "_", text.lower()).strip("_")
+
     def save_images(self, images, name="preview", overwrite=True, subfolder="", prompt=None, extra_pnginfo=None):
         results = list()
 
         # Remove file extension from name if present
-        name = os.path.splitext(name)[0]
+        name = self.slugify(os.path.splitext(name)[0])
 
         # Create output directory with subfolder if specified
         current_output_dir = self.output_dir

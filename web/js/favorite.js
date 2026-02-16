@@ -10,7 +10,7 @@ let favoritesCache = null;
 async function getFavorites() {
     if (favoritesCache === null) {
         favoritesCache = await settingsHelper.getSettingById(
-            "SyntaxHighlighting.favorites"
+            "SyntaxHighlighting.favorites",
         );
         if (!Array.isArray(favoritesCache)) {
             favoritesCache = [];
@@ -26,7 +26,7 @@ function updateFavoritesCache(newFavorites) {
 async function toggleFavourite(
     existingList,
     filename,
-    setting = "SyntaxHighlighting.favorites"
+    setting = "SyntaxHighlighting.favorites",
 ) {
     try {
         // Check if the filename is already in the list
@@ -83,14 +83,14 @@ app.registerExtension({
                                 toggleFavourite(
                                     existingList,
                                     filename,
-                                    "SyntaxHighlighting.favorites"
+                                    "SyntaxHighlighting.favorites",
                                 );
                             },
                             originalValue: value,
                         });
                     } catch (error) {
                         console.error(
-                            `Error processing value "${value}": ${error}`
+                            `Error processing value "${value}": ${error}`,
                         );
                     }
                 }
@@ -145,7 +145,7 @@ function brightenColor(color, brightenAmount = 15) {
         const b = parseInt(color.slice(5, 7), 16);
         return `rgb(${Math.min(255, r + brightenAmount)}, ${Math.min(
             255,
-            g + brightenAmount
+            g + brightenAmount,
         )}, ${Math.min(255, b + brightenAmount)})`;
     }
 
@@ -225,20 +225,28 @@ function hasAnyFavoritedChildren(parsed, existingList) {
     }
 
     return parsed.children.some((child) =>
-        hasAnyFavoritedChildren(child, existingList)
+        hasAnyFavoritedChildren(child, existingList),
     );
+}
+
+function slugify(text) {
+    // Slugify: lowercase, replace non-alphanumeric sequences with '_', strip leading/trailing '_'
+    return text
+        .toLowerCase()
+        .replace(/\W+/g, "_")
+        .replace(/^_+|_+$/g, "");
 }
 
 async function addStarsToFavourited(
     menuEntries,
     existingList,
     previewImages,
-    settings
+    settings,
 ) {
     const hoverDelay = settings["Preview Image Hover Delay"];
     const root = document.documentElement;
     const comfyMenuBgColor = hexToRgb(
-        getComputedStyle(root).getPropertyValue("--comfy-menu-bg").trim()
+        getComputedStyle(root).getPropertyValue("--comfy-menu-bg").trim(),
     );
 
     // Function to check and update the background color
@@ -302,21 +310,11 @@ async function addStarsToFavourited(
             removeAllPreviewImages();
 
             hoverTimer = setTimeout(() => {
-                const imageFileName = filename
-                    .split(".")[0]
-                    .replaceAll(/\([^)]*\)/g, "")
-                    .replaceAll(/[()]/g, "")
-                    .trim()
-                    .replaceAll(" ", "_")
-                    .toLowerCase();
+                const imageFileName = slugify(filename.split(".")[0]);
 
                 console.log("Looking for image:", imageFileName);
                 const imageData = previewImages.find(
-                    (img) =>
-                        img.filename
-                            .toLowerCase()
-                            .trim()
-                            .replaceAll(" ", "_") === imageFileName
+                    (img) => slugify(img.filename) === imageFileName,
                 );
 
                 if (imageData) {
@@ -394,7 +392,7 @@ async function observeContextMenu(existingList) {
         "Preview Image Side",
         "Preview Image Size",
         "Preview Image Hover Delay",
-        "Favorite On Top"
+        "Favorite On Top",
     );
     const favoriteColor = settings["Combo Highlight Color"];
     const brighterFavoriteColor = brightenColor(favoriteColor);
@@ -431,7 +429,7 @@ async function observeContextMenu(existingList) {
     let images;
     try {
         images = await fetch(`${API_PREFIX}/images_json`).then((response) =>
-            response.json()
+            response.json(),
         );
     } catch (error) {
         console.error("Error fetching images.json:", error);
@@ -451,7 +449,7 @@ async function observeContextMenu(existingList) {
                     menuEntries,
                     existingList,
                     images.images,
-                    settings
+                    settings,
                 );
             }
         });
@@ -509,7 +507,7 @@ async function addPreviewImage(entry, path, settings) {
     // Get all context menus to avoid overlapping
     const contextMenus = document.getElementsByClassName("litecontextmenu");
     const menuRects = Array.from(contextMenus).map((menu) =>
-        menu.getBoundingClientRect()
+        menu.getBoundingClientRect(),
     );
 
     // Function to check if a position would overlap with any context menu
@@ -530,7 +528,7 @@ async function addPreviewImage(entry, path, settings) {
         top,
         width,
         height,
-        isLeftSide
+        isLeftSide,
     ) => {
         const overlappingMenus = menuRects.filter((menuRect) => {
             return !(
@@ -589,7 +587,7 @@ async function addPreviewImage(entry, path, settings) {
                 leftPosition,
                 rect.top,
                 actualWidth,
-                actualHeight
+                actualHeight,
             )
         ) {
             positioned = true;
@@ -600,7 +598,7 @@ async function addPreviewImage(entry, path, settings) {
                 rect.top,
                 actualWidth,
                 actualHeight,
-                true
+                true,
             );
             if (alternativeLeft !== null) {
                 leftPosition = alternativeLeft;
@@ -614,7 +612,7 @@ async function addPreviewImage(entry, path, settings) {
                 leftPosition,
                 rect.top,
                 actualWidth,
-                actualHeight
+                actualHeight,
             )
         ) {
             positioned = true;
@@ -625,7 +623,7 @@ async function addPreviewImage(entry, path, settings) {
                 rect.top,
                 actualWidth,
                 actualHeight,
-                false
+                false,
             );
             if (alternativeLeft !== null) {
                 leftPosition = alternativeLeft;
@@ -643,7 +641,7 @@ async function addPreviewImage(entry, path, settings) {
                     leftPosition,
                     rect.top,
                     actualWidth,
-                    actualHeight
+                    actualHeight,
                 )
             ) {
                 positioned = true;
@@ -653,7 +651,7 @@ async function addPreviewImage(entry, path, settings) {
                     rect.top,
                     actualWidth,
                     actualHeight,
-                    false
+                    false,
                 );
                 if (alternativeLeft !== null) {
                     leftPosition = alternativeLeft;
@@ -669,7 +667,7 @@ async function addPreviewImage(entry, path, settings) {
                     leftPosition,
                     rect.top,
                     actualWidth,
-                    actualHeight
+                    actualHeight,
                 )
             ) {
                 positioned = true;
@@ -679,7 +677,7 @@ async function addPreviewImage(entry, path, settings) {
                     rect.top,
                     actualWidth,
                     actualHeight,
-                    true
+                    true,
                 );
                 if (alternativeLeft !== null) {
                     leftPosition = alternativeLeft;
@@ -705,7 +703,7 @@ async function addPreviewImage(entry, path, settings) {
     if (rect.top + actualHeight > viewportHeight - padding) {
         topPosition = Math.max(
             padding,
-            viewportHeight - actualHeight - padding
+            viewportHeight - actualHeight - padding,
         );
     }
 
