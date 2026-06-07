@@ -10,6 +10,7 @@ export class SyntaxHighlighter {
     resetState() {
         this.nestingLevel = 0;
         this.spanStack = [];
+        this.wildcardStack = [];
         this.uniqueIdCounter = 0;
         this.uniqueIdMap = new Map();
     }
@@ -63,6 +64,12 @@ export class SyntaxHighlighter {
             case TokenType.PAREN_CLOSE:
                 return this.processCloseTag(token, tokens, index);
 
+            case TokenType.WILDCARD_OPEN:
+                return this.processWildcardOpen(token);
+
+            case TokenType.WILDCARD_CLOSE:
+                return this.processWildcardClose(token);
+
             default:
                 return escapeHtml(token.value);
         }
@@ -82,6 +89,23 @@ export class SyntaxHighlighter {
         return `<span id="${uniqueId}" style="background-color: ${color};">${escapeHtml(
             token.value
         )}</span>`;
+    }
+
+    processWildcardOpen(token) {
+        if (!this.resources.wildcardHighlight) return escapeHtml(token.value);
+        const { wildcardColor } = this.resources;
+        const uniqueId = this.generateUniqueId("-wildcard");
+        this.wildcardStack.push({ id: uniqueId });
+        this.uniqueIdMap.set(uniqueId, wildcardColor);
+        return `<span id="${uniqueId}" style="background-color: PLACEHOLDER_${uniqueId};">${escapeHtml(token.value)}`;
+    }
+
+    processWildcardClose(token) {
+        if (!this.resources.wildcardHighlight || this.wildcardStack.length === 0) {
+            return escapeHtml(token.value);
+        }
+        this.wildcardStack.pop();
+        return `${escapeHtml(token.value)}</span>`;
     }
 
     processOpenTag(token) {
@@ -271,6 +295,11 @@ export class SyntaxHighlighter {
         while (this.spanStack.length > 0) {
             const unclosedSpan = this.spanStack.pop();
             this.uniqueIdMap.set(unclosedSpan.id, this.resources.errorColor);
+            result += "</span>";
+        }
+        while (this.wildcardStack.length > 0) {
+            const unclosedWildcard = this.wildcardStack.pop();
+            this.uniqueIdMap.set(unclosedWildcard.id, this.resources.errorColor);
             result += "</span>";
         }
         return result;

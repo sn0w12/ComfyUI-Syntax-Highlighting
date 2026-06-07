@@ -12,7 +12,9 @@ const globalResources = {
     validLoras: null,
     validEmbeddings: null,
     colors: null,
-    highlightType: "nesting", // Default to nesting instead of false
+    wildcardColor: null,
+    wildcardHighlight: true,
+    highlightType: "nesting",
     errorColor: "var(--error-text)",
 };
 
@@ -177,13 +179,15 @@ async function setTextHighlightType() {
 }
 
 async function updateTextColors() {
-    const customTextboxColors = await settingsHelper.getSetting(
-        "Textbox Colors"
-    );
+    const customTextboxColors = await settingsHelper.getSetting("Textbox Colors");
+    const wildcardColor = await settingsHelper.getSetting("Wildcard Color");
+    const wildcardHighlight = await settingsHelper.getSetting("Wildcard Highlighting");
     await setTextHighlightType();
     globalResources.colors = customTextboxColors
         .split("\n")
         .map((color) => (color.charAt(0) === "#" ? hexToRgb(color) : color));
+    globalResources.wildcardColor = wildcardColor.charAt(0) === "#" ? hexToRgb(wildcardColor) : wildcardColor;
+    globalResources.wildcardHighlight = wildcardHighlight;
 }
 
 function setTextColors(inputEl, overlayEl) {
@@ -199,11 +203,13 @@ async function syncText(inputEl, overlayEl, tries = 1) {
     const errorColor = globalResources.errorColor;
     const shouldHighlightGradient = globalResources.highlightType;
     const loraColor = colors ? colors[0] : undefined;
+    const wildcardColor = globalResources.wildcardColor;
 
     if (
         !colors ||
         !errorColor ||
         !loraColor ||
+        !wildcardColor ||
         shouldHighlightGradient === undefined
     ) {
         if (tries < 5) {

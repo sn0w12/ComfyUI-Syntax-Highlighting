@@ -7,6 +7,8 @@ export const TokenType = {
     EMBEDDING: "embedding",
     ESCAPE: "escape",
     INVALID_ESCAPE: "invalid_escape",
+    WILDCARD_OPEN: "wildcard_open",
+    WILDCARD_CLOSE: "wildcard_close",
 };
 
 export class SyntaxTokenizer {
@@ -19,6 +21,8 @@ export class SyntaxTokenizer {
             { type: TokenType.LORA_CLOSE, regex: />/g },
             { type: TokenType.PAREN_OPEN, regex: /\(/g },
             { type: TokenType.PAREN_CLOSE, regex: /\)/g },
+            { type: TokenType.WILDCARD_OPEN, regex: /\{/g },
+            { type: TokenType.WILDCARD_CLOSE, regex: /\}/g },
         ];
     }
 
