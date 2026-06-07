@@ -24,6 +24,21 @@ const settingsDefinitions = [
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
+        name: "Wildcard Highlighting",
+        category: ["Syntax Highlighting", "Textbox", "WildcardHighlighting"],
+        defaultValue: true,
+        tooltip: "Highlight wildcard sets enclosed in {} (e.g. Impact Pack wildcards).",
+        type: SettingsHelper.ST.BOOLEAN,
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
+    },
+    {
+        name: "Wildcard Color",
+        category: ["Syntax Highlighting", "Textbox", "WildcardColor"],
+        defaultValue: "#c47900",
+        type: SettingsHelper.ST.COLORPICKER,
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
+    },
+    {
         name: "Tag Tooltips",
         category: ["Syntax Highlighting", "Textbox", "TextboxTooltips"],
         defaultValue: false,
