@@ -2,6 +2,7 @@ import { settingsHelper, API_PREFIX } from "./settings.js";
 import { hexToRgb } from "./util.js";
 import { BooruApi } from "./booruTagApi.js";
 import { api } from "../../../scripts/api.js";
+import { html } from "./highlighting/html.js";
 import { SyntaxTokenizer } from "./highlighting/tokenizer.js";
 import { SyntaxHighlighter } from "./highlighting/highlighter.js";
 
@@ -115,7 +116,7 @@ function enhanceTextarea(textarea) {
                     setOverlayStyle(textarea, overlayEl);
                 } else {
                     console.error(
-                        "Overlay element not found during paste operation"
+                        "Overlay element not found during paste operation",
                     );
                 }
             } catch (err) {
@@ -173,20 +174,26 @@ document.querySelectorAll("textarea").forEach((textarea) => {
 
 async function setTextHighlightType() {
     const highlightType = await settingsHelper.getSetting(
-        "Textbox Highlight Type"
+        "Textbox Highlight Type",
     );
     globalResources.highlightType = highlightType;
 }
 
 async function updateTextColors() {
-    const customTextboxColors = await settingsHelper.getSetting("Textbox Colors");
+    const customTextboxColors =
+        await settingsHelper.getSetting("Textbox Colors");
     const wildcardColor = await settingsHelper.getSetting("Wildcard Color");
-    const wildcardHighlight = await settingsHelper.getSetting("Wildcard Highlighting");
+    const wildcardHighlight = await settingsHelper.getSetting(
+        "Wildcard Highlighting",
+    );
     await setTextHighlightType();
     globalResources.colors = customTextboxColors
         .split("\n")
         .map((color) => (color.charAt(0) === "#" ? hexToRgb(color) : color));
-    globalResources.wildcardColor = wildcardColor.charAt(0) === "#" ? hexToRgb(wildcardColor) : wildcardColor;
+    globalResources.wildcardColor =
+        wildcardColor.charAt(0) === "#"
+            ? hexToRgb(wildcardColor)
+            : wildcardColor;
     globalResources.wildcardHighlight = wildcardHighlight;
 }
 
@@ -230,8 +237,10 @@ async function syncText(inputEl, overlayEl, tries = 1) {
                 .split(",")
                 .map((tag) => {
                     if (!tag.trim()) return tag;
-                    const escapedTag = tag.trim().replace(/"/g, "&quot;");
-                    return `<span class="tag-span" data-tag="${escapedTag}">${tag}</span>`;
+                    return html("span", tag, {
+                        className: "tag-span",
+                        attributes: { "data-tag": tag.trim() },
+                    });
                 })
                 .join(",");
         } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -245,14 +254,17 @@ async function syncText(inputEl, overlayEl, tries = 1) {
                 // Replace each tag in the HTML with a tagged version
                 tags.forEach((tag, index) => {
                     if (tag.trim()) {
-                        const escapedTag = tag.trim().replace(/"/g, "&quot;");
                         const tagRegex = new RegExp(
                             `(${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
-                            "g"
+                            "g",
                         );
                         result = result.replace(
                             tagRegex,
-                            `<span class="tag-span" data-tag="${escapedTag}">$1</span>`
+                            html("span", "$1", {
+                                className: "tag-span",
+                                attributes: { "data-tag": tag.trim() },
+                                escape: false,
+                            }),
                         );
                     }
                 });
@@ -261,8 +273,11 @@ async function syncText(inputEl, overlayEl, tries = 1) {
                 const clone = node.cloneNode(true);
                 const trimmedText = textContent.trim();
                 if (trimmedText) {
-                    const escapedTag = trimmedText.replace(/"/g, "&quot;");
-                    return `<span class="tag-span" data-tag="${escapedTag}">${clone.outerHTML}</span>`;
+                    return html("span", clone.outerHTML, {
+                        className: "tag-span",
+                        attributes: { "data-tag": trimmedText },
+                        escape: false,
+                    });
                 }
                 return clone.outerHTML;
             }
@@ -461,7 +476,7 @@ async function addTooltips(textarea) {
             textarea.style.pointerEvents = "none";
             const elementBelow = document.elementFromPoint(
                 e.clientX,
-                e.clientY
+                e.clientY,
             );
             textarea.style.pointerEvents = "auto";
 

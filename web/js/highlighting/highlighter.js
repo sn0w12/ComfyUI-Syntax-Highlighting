@@ -1,4 +1,5 @@
 import { TokenType } from "./tokenizer.js";
+import { html } from "./html.js";
 import { escapeHtml, interpolateColor, easeInOutCubic } from "../util.js";
 
 export class SyntaxHighlighter {
@@ -47,11 +48,11 @@ export class SyntaxHighlighter {
 
             case TokenType.INVALID_ESCAPE:
                 console.error(
-                    `Replace "${token.value}" at position ${token.start} with "\\"`
+                    `Replace "${token.value}" at position ${token.start} with "\\"`,
                 );
-                return `<span style="background-color: ${errorColor};">${escapeHtml(
-                    token.value[0]
-                )}</span>${escapeHtml(token.value[1])}`;
+                return `${html("span", token.value[0], {
+                    style: `background-color: ${errorColor};`,
+                })}${escapeHtml(token.value[1])}`;
 
             case TokenType.EMBEDDING:
                 return this.processEmbedding(token);
@@ -81,14 +82,15 @@ export class SyntaxHighlighter {
         const isValid = this.validateName(
             "embedding",
             embeddingName,
-            validEmbeddings
+            validEmbeddings,
         );
         const color = isValid ? colors[0] : errorColor;
         const uniqueId = this.generateUniqueId("-embedding");
 
-        return `<span id="${uniqueId}" style="background-color: ${color};">${escapeHtml(
-            token.value
-        )}</span>`;
+        return html("span", token.value, {
+            id: uniqueId,
+            style: `background-color: ${color};`,
+        });
     }
 
     processWildcardOpen(token) {
@@ -97,15 +99,22 @@ export class SyntaxHighlighter {
         const uniqueId = this.generateUniqueId("-wildcard");
         this.wildcardStack.push({ id: uniqueId });
         this.uniqueIdMap.set(uniqueId, wildcardColor);
-        return `<span id="${uniqueId}" style="background-color: PLACEHOLDER_${uniqueId};">${escapeHtml(token.value)}`;
+        return html("span", token.value, {
+            id: uniqueId,
+            style: `background-color: PLACEHOLDER_${uniqueId};`,
+            closeTag: false,
+        });
     }
 
     processWildcardClose(token) {
-        if (!this.resources.wildcardHighlight || this.wildcardStack.length === 0) {
+        if (
+            !this.resources.wildcardHighlight ||
+            this.wildcardStack.length === 0
+        ) {
             return escapeHtml(token.value);
         }
         this.wildcardStack.pop();
-        return `${escapeHtml(token.value)}</span>`;
+        return html("span", token.value, { openTag: false });
     }
 
     processOpenTag(token) {
@@ -125,9 +134,11 @@ export class SyntaxHighlighter {
         this.nestingLevel++;
         this.uniqueIdMap.set(uniqueId, color);
 
-        return `<span id="${uniqueId}" style="background-color: PLACEHOLDER_${uniqueId};">${escapeHtml(
-            token.value
-        )}`;
+        return html("span", token.value, {
+            id: uniqueId,
+            style: `background-color: PLACEHOLDER_${uniqueId};`,
+            closeTag: false,
+        });
     }
 
     processCloseTag(token, tokens, index) {
@@ -155,7 +166,7 @@ export class SyntaxHighlighter {
             }
         }
 
-        return `${escapeHtml(token.value)}</span>`;
+        return html("span", token.value, { openTag: false });
     }
 
     highlightDuplicates(highlightedText, errorColor) {
@@ -166,7 +177,7 @@ export class SyntaxHighlighter {
             .map((s) => this.processTag(s));
 
         const exactDuplicates = segments.filter(
-            (item, index) => segments.indexOf(item) !== index
+            (item, index) => segments.indexOf(item) !== index,
         );
 
         exactDuplicates.forEach((duplicate) => {
@@ -175,7 +186,9 @@ export class SyntaxHighlighter {
                 highlightedText = highlightedText.replace(
                     regex,
                     (match, prefix) =>
-                        `${prefix}<span style="background-color: ${errorColor};">${duplicate}</span>`
+                        `${prefix}${html("span", duplicate, {
+                            style: `background-color: ${errorColor};`,
+                        })}`,
                 );
             }
         });
@@ -200,7 +213,7 @@ export class SyntaxHighlighter {
             if (matches && matches.length >= 2) {
                 const secondColonIndex = trimmedTag.indexOf(
                     ":",
-                    trimmedTag.indexOf(":") + 1
+                    trimmedTag.indexOf(":") + 1,
                 );
                 trimmedTag = trimmedTag.substring(0, secondColonIndex).trim();
             }
@@ -249,7 +262,7 @@ export class SyntaxHighlighter {
         return validList.some(
             (item) =>
                 item.toLowerCase().includes(name.toLowerCase()) ||
-                name.toLowerCase().includes(item.toLowerCase())
+                name.toLowerCase().includes(item.toLowerCase()),
         );
     }
 
@@ -286,7 +299,7 @@ export class SyntaxHighlighter {
         return interpolateColor(
             colors[0],
             colors[colors.length - 1],
-            easeInOutCubic(normalizedStrength)
+            easeInOutCubic(normalizedStrength),
         );
     }
 
@@ -299,7 +312,10 @@ export class SyntaxHighlighter {
         }
         while (this.wildcardStack.length > 0) {
             const unclosedWildcard = this.wildcardStack.pop();
-            this.uniqueIdMap.set(unclosedWildcard.id, this.resources.errorColor);
+            this.uniqueIdMap.set(
+                unclosedWildcard.id,
+                this.resources.errorColor,
+            );
             result += "</span>";
         }
         return result;
@@ -309,7 +325,7 @@ export class SyntaxHighlighter {
         this.uniqueIdMap.forEach((newColor, id) => {
             html = html.replace(
                 `style="background-color: PLACEHOLDER_${id};"`,
-                `style="background-color: ${newColor};"`
+                `style="background-color: ${newColor};"`,
             );
         });
         return html;
