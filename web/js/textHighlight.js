@@ -8,6 +8,8 @@ import { SyntaxHighlighter } from "./highlighting/highlighter.js";
 
 const booruApi = new BooruApi();
 const enhancedTextareas = new WeakSet();
+const originalTextareaBackgroundColors = new WeakMap();
+const authoredTextareaBackgroundColors = new WeakMap();
 
 const globalResources = {
     validLoras: null,
@@ -75,8 +77,7 @@ textareaObserver.observe(document.body, {
 function enhanceTextarea(textarea) {
     if (
         enhancedTextareas.has(textarea) ||
-        textarea.closest(".settings-container") ||
-        !textarea.classList.contains("comfy-multiline-input")
+        textarea.closest(".settings-container")
     ) {
         return;
     }
@@ -86,8 +87,17 @@ function enhanceTextarea(textarea) {
     const overlayEl = document.createElement("div");
     overlayEl.className = "input-overlay";
     textarea.parentNode.insertBefore(overlayEl, textarea);
-    textarea.style.background = "transparent";
+
+    originalTextareaBackgroundColors.set(textarea, {
+        value: textarea.style.getPropertyValue("background-color"),
+        backgroundColorPriority:
+            textarea.style.getPropertyPriority("background-color"),
+    });
+    refreshAuthoredBackgroundColor(textarea);
+
+    textarea.style.backgroundColor = "transparent";
     textarea.style.position = "relative";
+    textarea.style.zIndex = "1";
 
     // Setup the textarea and overlay
     setOverlayPosition(textarea, overlayEl);
@@ -144,7 +154,9 @@ function enhanceTextarea(textarea) {
 
     // Add observer for style changes
     const observer = new MutationObserver(() => {
+        refreshAuthoredBackgroundColor(textarea);
         setOverlayPosition(textarea, overlayEl);
+        setOverlayStyle(textarea, overlayEl);
     });
 
     observer.observe(textarea, {
@@ -239,6 +251,7 @@ async function syncText(inputEl, overlayEl, tries = 1) {
                     if (!tag.trim()) return tag;
                     return html("span", tag, {
                         className: "tag-span",
+                        style: { height: "fit-content" },
                         attributes: { "data-tag": tag.trim() },
                     });
                 })
@@ -390,6 +403,175 @@ function hideTagTooltip() {
     });
 }
 
+function calculateSelectorSpecificity(selector) {
+    const normalizedSelector = selector.replace(/:not\(([^)]*)\)/g, "$1");
+    const idCount = (normalizedSelector.match(/#[\w-]+/g) || []).length;
+    const classCount =
+        (normalizedSelector.match(/\.[\w\\:-]+/g) || []).length +
+        (normalizedSelector.match(/\[[^\]]+\]/g) || []).length +
+        (normalizedSelector.match(/:(?!:)[\w-]+(?:\([^)]*\))?/g) || []).length;
+    const elementCount =
+        (normalizedSelector.match(/(^|[\s>+~])([a-z]+[\w-]*)/gi) || []).length +
+        (normalizedSelector.match(/::[\w-]+/g) || []).length;
+
+    return [idCount, classCount, elementCount];
+}
+
+function compareSpecificity(left, right) {
+    for (let index = 0; index < left.length; index += 1) {
+        if (left[index] !== right[index]) {
+            return left[index] - right[index];
+        }
+    }
+
+    return 0;
+}
+
+function getAuthoredBackgroundColorValue(element, computedStyle) {
+    const originalBackgroundColor =
+        originalTextareaBackgroundColors.get(element);
+    if (originalBackgroundColor?.value) {
+        return originalBackgroundColor.value;
+    }
+
+    let winningMatch = null;
+    let ruleOrder = 0;
+
+    const considerRule = (rule) => {
+        const backgroundColor = rule.style
+            .getPropertyValue("background-color")
+            .trim();
+        if (!backgroundColor) {
+            ruleOrder += 1;
+            return;
+        }
+
+        rule.selectorText.split(",").forEach((selectorPart) => {
+            const selector = selectorPart.trim();
+            if (!selector || !element.matches(selector)) {
+                return;
+            }
+
+            const candidate = {
+                value: backgroundColor,
+                important:
+                    rule.style.getPropertyPriority("background-color") ===
+                    "important",
+                specificity: calculateSelectorSpecificity(selector),
+                order: ruleOrder,
+            };
+
+            if (!winningMatch) {
+                winningMatch = candidate;
+                return;
+            }
+
+            if (winningMatch.important !== candidate.important) {
+                if (candidate.important) {
+                    winningMatch = candidate;
+                }
+                return;
+            }
+
+            const specificityComparison = compareSpecificity(
+                candidate.specificity,
+                winningMatch.specificity,
+            );
+            if (
+                specificityComparison > 0 ||
+                (specificityComparison === 0 &&
+                    candidate.order >= winningMatch.order)
+            ) {
+                winningMatch = candidate;
+            }
+        });
+
+        ruleOrder += 1;
+    };
+
+    const visitRules = (rules) => {
+        Array.from(rules).forEach((rule) => {
+            if (rule instanceof CSSStyleRule) {
+                considerRule(rule);
+                return;
+            }
+
+            if (rule instanceof CSSMediaRule) {
+                if (window.matchMedia(rule.conditionText).matches) {
+                    visitRules(rule.cssRules);
+                }
+                return;
+            }
+
+            if (rule.cssRules) {
+                visitRules(rule.cssRules);
+            }
+        });
+    };
+
+    Array.from(document.styleSheets).forEach((styleSheet) => {
+        try {
+            if (styleSheet.cssRules) {
+                visitRules(styleSheet.cssRules);
+            }
+        } catch (error) {
+            // Ignore cross-origin stylesheets we cannot inspect.
+        }
+    });
+
+    return (
+        winningMatch?.value ||
+        computedStyle.getPropertyValue("background-color").trim()
+    );
+}
+
+function refreshAuthoredBackgroundColor(element) {
+    const computedStyle = window.getComputedStyle(element);
+    authoredTextareaBackgroundColors.set(
+        element,
+        getAuthoredBackgroundColorValue(element, computedStyle),
+    );
+}
+
+const overlayStyleProperties = [
+    "border-radius",
+    "box-sizing",
+    "font",
+    "font-family",
+    "font-size",
+    "font-style",
+    "font-variant",
+    "font-weight",
+    "letter-spacing",
+    "line-height",
+    "padding",
+    "text-align",
+    "text-indent",
+    "text-rendering",
+    "text-transform",
+    "white-space",
+    "word-spacing",
+    "overflow-x",
+    "overflow-y",
+];
+
+function copyPresentationStyles(sourceEl, targetEl) {
+    const computedStyle = window.getComputedStyle(sourceEl);
+
+    overlayStyleProperties.forEach((property) => {
+        targetEl.style.setProperty(
+            property,
+            computedStyle.getPropertyValue(property),
+            computedStyle.getPropertyPriority(property),
+        );
+    });
+    targetEl.style.setProperty(
+        "background-color",
+        authoredTextareaBackgroundColors.get(sourceEl) ||
+            getAuthoredBackgroundColorValue(sourceEl, computedStyle),
+    );
+}
+
 function setOverlayPosition(inputEl, overlayEl) {
     // Skip if elements don't exist or aren't in the DOM
     if (!inputEl || !overlayEl || !document.contains(inputEl)) return;
@@ -417,23 +599,11 @@ function setOverlayPosition(inputEl, overlayEl) {
 }
 
 function setOverlayStyle(inputEl, overlayEl) {
-    const textareaStyle = window.getComputedStyle(inputEl);
-    overlayEl.style.backgroundColor = "var(--comfy-input-bg)";
+    copyPresentationStyles(inputEl, overlayEl);
     overlayEl.style.position = "absolute";
-    overlayEl.style.fontFamily = textareaStyle.fontFamily;
-    overlayEl.style.fontSize = textareaStyle.fontSize;
-    overlayEl.style.fontWeight = textareaStyle.fontWeight;
-    overlayEl.style.lineHeight = textareaStyle.lineHeight;
-    overlayEl.style.letterSpacing = textareaStyle.letterSpacing;
-    overlayEl.style.whiteSpace = textareaStyle.whiteSpace;
-    overlayEl.style.color = "rgba(0,0,0,0)";
-    overlayEl.style.padding = textareaStyle.padding;
-    overlayEl.style.boxSizing = textareaStyle.boxSizing;
     overlayEl.style.zIndex = "1";
     overlayEl.style.pointerEvents = "auto";
     overlayEl.style.color = "transparent";
-    overlayEl.style.overflowX = textareaStyle.overflowX;
-    overlayEl.style.overflowY = textareaStyle.overflowY;
     overlayEl.style.whiteSpace = "pre-wrap";
     overlayEl.style.wordWrap = "break-word";
 }
