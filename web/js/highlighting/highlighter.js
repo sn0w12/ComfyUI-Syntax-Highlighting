@@ -51,7 +51,7 @@ export class SyntaxHighlighter {
                     `Replace "${token.value}" at position ${token.start} with "\\"`,
                 );
                 return `${html("span", token.value[0], {
-                    style: `background-color: ${errorColor};`,
+                    style: { backgroundColor: errorColor },
                 })}${escapeHtml(token.value[1])}`;
 
             case TokenType.EMBEDDING:
@@ -89,7 +89,7 @@ export class SyntaxHighlighter {
 
         return html("span", token.value, {
             id: uniqueId,
-            style: `background-color: ${color};`,
+            style: { backgroundColor: color },
         });
     }
 
@@ -101,7 +101,7 @@ export class SyntaxHighlighter {
         this.uniqueIdMap.set(uniqueId, wildcardColor);
         return html("span", token.value, {
             id: uniqueId,
-            style: `background-color: PLACEHOLDER_${uniqueId};`,
+            attributes: { "data-color-id": uniqueId },
             closeTag: false,
         });
     }
@@ -136,7 +136,7 @@ export class SyntaxHighlighter {
 
         return html("span", token.value, {
             id: uniqueId,
-            style: `background-color: PLACEHOLDER_${uniqueId};`,
+            attributes: { "data-color-id": uniqueId },
             closeTag: false,
         });
     }
@@ -187,7 +187,7 @@ export class SyntaxHighlighter {
                     regex,
                     (match, prefix) =>
                         `${prefix}${html("span", duplicate, {
-                            style: `background-color: ${errorColor};`,
+                            style: { backgroundColor: errorColor },
                         })}`,
                 );
             }
@@ -322,12 +322,22 @@ export class SyntaxHighlighter {
     }
 
     applyColorUpdates(html) {
-        this.uniqueIdMap.forEach((newColor, id) => {
-            html = html.replace(
-                `style="background-color: PLACEHOLDER_${id};"`,
-                `style="background-color: ${newColor};"`,
-            );
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = html;
+
+        tempDiv.querySelectorAll("[data-color-id]").forEach((element) => {
+            const colorId = element.getAttribute("data-color-id");
+            if (!colorId) {
+                return;
+            }
+
+            const newColor = this.uniqueIdMap.get(colorId);
+            if (newColor) {
+                element.style.backgroundColor = newColor;
+            }
+            element.removeAttribute("data-color-id");
         });
-        return html;
+
+        return tempDiv.innerHTML;
     }
 }
