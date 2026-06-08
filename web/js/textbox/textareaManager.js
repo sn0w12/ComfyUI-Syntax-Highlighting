@@ -110,7 +110,8 @@ function setTextColors(inputEl, overlayEl) {
 export function enhanceTextarea(textarea) {
     if (
         enhancedTextareas.has(textarea) ||
-        textarea.closest(".settings-container")
+        textarea.closest(".settings-container") ||
+        textarea.closest(".form-input")
     ) {
         return;
     }
