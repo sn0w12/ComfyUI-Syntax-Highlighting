@@ -17,18 +17,16 @@ export function syncText(inputEl, overlayEl, tries = 1) {
     const text = inputEl.value;
     overlayEl.textContent = text;
 
-    const colors = globalResources.colors;
-    const errorColor = globalResources.errorColor;
-    const shouldHighlightGradient = globalResources.highlightType;
+    const { colors, errorColor, wildcardColor, highlightType } =
+        globalResources;
     const loraColor = colors ? colors[0] : undefined;
-    const wildcardColor = globalResources.wildcardColor;
 
     if (
         !colors ||
         !errorColor ||
         !loraColor ||
         !wildcardColor ||
-        shouldHighlightGradient === undefined
+        highlightType === undefined
     ) {
         if (tries < 5) {
             setTimeout(() => syncText(inputEl, overlayEl, tries++), tries * 5);

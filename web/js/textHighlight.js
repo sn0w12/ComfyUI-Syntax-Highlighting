@@ -6,26 +6,42 @@ import { enhanceTextarea, syncText } from "./textbox/textareaManager.js";
 import { setOverlayStyle } from "./textbox/styleUtils.js";
 
 async function initializeGlobalResources() {
-    globalResources.validLoras = await getValidFiles("loras");
-    globalResources.validEmbeddings = await getValidFiles("embeddings");
+    const [loras, embeddings] = await Promise.all([
+        getValidFiles("loras"),
+        getValidFiles("embeddings"),
+    ]);
+    globalResources.validLoras = loras;
+    globalResources.validEmbeddings = embeddings;
     await updateTextColors();
 }
 
 async function getValidFiles(type) {
-    return await settingsHelper.fetchApi(`${API_PREFIX}/${type}`, { method: "GET" });
+    return await settingsHelper.fetchApi(`${API_PREFIX}/${type}`, {
+        method: "GET",
+    });
 }
 
 async function setTextHighlightType() {
-    globalResources.highlightType = await settingsHelper.getSetting("Textbox Highlight Type");
+    globalResources.highlightType = await settingsHelper.getSetting(
+        "Textbox Highlight Type",
+    );
 }
 
 async function updateTextColors() {
-    const customTextboxColors = await settingsHelper.getSetting("Textbox Colors");
-    const wildcardColor = await settingsHelper.getSetting("Wildcard Color");
-    const wildcardHighlight = await settingsHelper.getSetting("Wildcard Highlighting");
+    const [customTextboxColors, wildcardColor, wildcardHighlight] =
+        await Promise.all([
+            settingsHelper.getSetting("Textbox Colors"),
+            settingsHelper.getSetting("Wildcard Color"),
+            settingsHelper.getSetting("Wildcard Highlighting"),
+        ]);
     await setTextHighlightType();
-    globalResources.colors = customTextboxColors.split("\n").map((color) => (color.charAt(0) === "#" ? hexToRgb(color) : color));
-    globalResources.wildcardColor = wildcardColor.charAt(0) === "#" ? hexToRgb(wildcardColor) : wildcardColor;
+    globalResources.colors = customTextboxColors
+        .split("\n")
+        .map((color) => (color.charAt(0) === "#" ? hexToRgb(color) : color));
+    globalResources.wildcardColor =
+        wildcardColor.charAt(0) === "#"
+            ? hexToRgb(wildcardColor)
+            : wildcardColor;
     globalResources.wildcardHighlight = wildcardHighlight;
 }
 
