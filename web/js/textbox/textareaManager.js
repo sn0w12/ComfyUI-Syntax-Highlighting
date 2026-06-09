@@ -1,7 +1,7 @@
 import { html } from "../highlighting/html.js";
 import { SyntaxTokenizer } from "../highlighting/tokenizer.js";
 import { SyntaxHighlighter } from "../highlighting/highlighter.js";
-import { globalResources } from "./state.js";
+import { config } from "./state.js";
 import {
     originalTextareaBackgroundColors,
     refreshAuthoredBackgroundColor,
@@ -17,8 +17,7 @@ export function syncText(inputEl, overlayEl, tries = 1) {
     const text = inputEl.value;
     overlayEl.textContent = text;
 
-    const { colors, errorColor, wildcardColor, highlightType } =
-        globalResources;
+    const { colors, errorColor, wildcardColor, highlightType } = config;
     const loraColor = colors ? colors[0] : undefined;
 
     if (
@@ -35,7 +34,7 @@ export function syncText(inputEl, overlayEl, tries = 1) {
     }
 
     const tokenizer = new SyntaxTokenizer();
-    const highlighter = new SyntaxHighlighter(globalResources);
+    const highlighter = new SyntaxHighlighter();
 
     const tokens = tokenizer.tokenize(text);
     let highlightedText = highlighter.processTokens(tokens);

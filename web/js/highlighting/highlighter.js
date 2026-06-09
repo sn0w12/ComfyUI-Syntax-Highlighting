@@ -1,10 +1,10 @@
 import { TokenType } from "./tokenizer.js";
 import { html } from "./html.js";
 import { escapeHtml, interpolateColor, easeInOutCubic } from "../util.js";
+import { config } from "../textbox/state.js";
 
 export class SyntaxHighlighter {
-    constructor(resources) {
-        this.resources = resources;
+    constructor() {
         this.resetState();
     }
 
@@ -31,13 +31,13 @@ export class SyntaxHighlighter {
 
         result += this.handleUnclosedSpans();
         result = this.applyColorUpdates(result);
-        result = this.highlightDuplicates(result, this.resources.errorColor);
+        result = this.highlightDuplicates(result, config.errorColor);
 
         return result;
     }
 
     processToken(token, tokens, index) {
-        const { colors, errorColor } = this.resources;
+        const { colors, errorColor } = config;
 
         switch (token.type) {
             case TokenType.TEXT:
@@ -77,7 +77,7 @@ export class SyntaxHighlighter {
     }
 
     processEmbedding(token) {
-        const { colors, errorColor, validEmbeddings } = this.resources;
+        const { colors, errorColor, validEmbeddings } = config;
         const embeddingName = token.value.split(":")[1];
         const isValid = this.validateName(
             "embedding",
@@ -94,8 +94,8 @@ export class SyntaxHighlighter {
     }
 
     processWildcardOpen(token) {
-        if (!this.resources.wildcardHighlight) return escapeHtml(token.value);
-        const { wildcardColor } = this.resources;
+        if (!config.wildcardHighlight) return escapeHtml(token.value);
+        const { wildcardColor } = config;
         const uniqueId = this.generateUniqueId("-wildcard");
         this.wildcardStack.push({ id: uniqueId });
         this.uniqueIdMap.set(uniqueId, wildcardColor);
@@ -108,7 +108,7 @@ export class SyntaxHighlighter {
 
     processWildcardClose(token) {
         if (
-            !this.resources.wildcardHighlight ||
+            !config.wildcardHighlight ||
             this.wildcardStack.length === 0
         ) {
             return escapeHtml(token.value);
@@ -118,7 +118,7 @@ export class SyntaxHighlighter {
     }
 
     processOpenTag(token) {
-        const { colors } = this.resources;
+        const { colors } = config;
         let color = colors[this.nestingLevel % colors.length];
         const charType = token.type === TokenType.LORA_OPEN ? "-lora" : "";
         const uniqueId = this.generateUniqueId(charType);
@@ -159,7 +159,7 @@ export class SyntaxHighlighter {
         if (openSpan.type === TokenType.LORA_OPEN) {
             this.processLoraValidation(openSpan, tokens, index);
         } else {
-            if (this.resources.highlightType === "strength") {
+            if (config.highlightType === "strength") {
                 const strength = this.extractStrengthFromTokens(tokens, index);
                 const newColor = this.calculateStrengthColor(strength);
                 this.uniqueIdMap.set(openSpan.id, newColor);
@@ -240,17 +240,17 @@ export class SyntaxHighlighter {
     processLoraValidation(openSpan, tokens, index) {
         const loraName = this.extractLoraNameFromTokens(tokens, index);
 
-        if (!this.validateName("lora", loraName, this.resources.validLoras)) {
-            this.uniqueIdMap.set(openSpan.id, this.resources.errorColor);
+        if (!this.validateName("lora", loraName, config.validLoras)) {
+            this.uniqueIdMap.set(openSpan.id, config.errorColor);
             return;
         }
 
         // Handle strength calculation if needed
-        if (this.resources.highlightType === "strength") {
+        if (config.highlightType === "strength") {
             const strength = this.extractStrengthFromTokens(tokens, index);
             const newColor = this.calculateStrengthColor(strength);
             this.uniqueIdMap.set(openSpan.id, newColor);
-        } else if (this.resources.highlightType === "nesting") {
+        } else if (config.highlightType === "nesting") {
             this.uniqueIdMap.set(openSpan.id, openSpan.originalColor);
         }
     }
@@ -293,7 +293,7 @@ export class SyntaxHighlighter {
     }
 
     calculateStrengthColor(strength) {
-        const { colors } = this.resources;
+        const { colors } = config;
         const clampedStrength = Math.max(0, Math.min(2, strength));
         const normalizedStrength = clampedStrength / 2;
         return interpolateColor(
@@ -307,14 +307,14 @@ export class SyntaxHighlighter {
         let result = "";
         while (this.spanStack.length > 0) {
             const unclosedSpan = this.spanStack.pop();
-            this.uniqueIdMap.set(unclosedSpan.id, this.resources.errorColor);
+            this.uniqueIdMap.set(unclosedSpan.id, config.errorColor);
             result += "</span>";
         }
         while (this.wildcardStack.length > 0) {
             const unclosedWildcard = this.wildcardStack.pop();
             this.uniqueIdMap.set(
                 unclosedWildcard.id,
-                this.resources.errorColor,
+                config.errorColor,
             );
             result += "</span>";
         }
