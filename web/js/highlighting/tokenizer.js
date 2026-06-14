@@ -9,11 +9,13 @@ export const TokenType = {
     INVALID_ESCAPE: "invalid_escape",
     WILDCARD_OPEN: "wildcard_open",
     WILDCARD_CLOSE: "wildcard_close",
+    COMMENT_LINE: "comment_line",
 };
 
 export class SyntaxTokenizer {
     constructor() {
         this.patterns = [
+            { type: TokenType.COMMENT_LINE, regex: /^\s*#[^\n]*/gm },
             { type: TokenType.ESCAPE, regex: /\\[()]/g },
             { type: TokenType.INVALID_ESCAPE, regex: /\/[()]/g },
             { type: TokenType.EMBEDDING, regex: /embedding:[^,\s]+/gi },
@@ -47,6 +49,7 @@ export class SyntaxTokenizer {
         matches.sort((a, b) => {
             if (a.start !== b.start) return a.start - b.start;
             const priority = {
+                comment_line: -1,
                 escape: 0,
                 invalid_escape: 1,
                 paren_open: 2,

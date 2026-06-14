@@ -54,6 +54,9 @@ export class SyntaxHighlighter {
                     style: { backgroundColor: errorColor },
                 })}${escapeHtml(token.value[1])}`;
 
+            case TokenType.COMMENT_LINE:
+                return this.processCommentLine(token);
+
             case TokenType.EMBEDDING:
                 return this.processEmbedding(token);
 
@@ -74,6 +77,11 @@ export class SyntaxHighlighter {
             default:
                 return escapeHtml(token.value);
         }
+    }
+
+    processCommentLine(token) {
+        if (!config.commentHighlight) return escapeHtml(token.value);
+        return html("span", token.value, { style: { backgroundColor: config.commentColor } });
     }
 
     processEmbedding(token) {
