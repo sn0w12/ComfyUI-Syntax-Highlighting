@@ -39,6 +39,21 @@ const settingsDefinitions = [
         onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
     },
     {
+        name: "Comment Highlighting",
+        category: ["Syntax Highlighting", "Textbox", "CommentHighlighting"],
+        defaultValue: true,
+        tooltip: "Highlight lines starting with '#' as comments (e.g. Impact Pack comment syntax). Suppresses all other highlighting on that line.",
+        type: SettingsHelper.ST.BOOLEAN,
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
+    },
+    {
+        name: "Comment Color",
+        category: ["Syntax Highlighting", "Textbox", "CommentColor"],
+        defaultValue: "#6a9955",
+        type: SettingsHelper.ST.COLORPICKER,
+        onChange: () => SettingsHelper.PresetOnChange.reloadSettings(),
+    },
+    {
         name: "Tag Tooltips",
         category: ["Syntax Highlighting", "Textbox", "TextboxTooltips"],
         defaultValue: false,
