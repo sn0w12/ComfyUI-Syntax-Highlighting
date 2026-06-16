@@ -1,6 +1,10 @@
 import { hexToRgb } from "../util.js";
 import { settingsHelper, API_PREFIX } from "../settings.js";
 
+function parseColor(color) {
+    return color.charAt(0) === "#" ? hexToRgb(color) : color;
+}
+
 export class TextHighlightConfig {
     validLoras = null;
     validEmbeddings = null;
@@ -23,26 +27,36 @@ export class TextHighlightConfig {
     }
 
     async #fetchValidList(type) {
-        return await settingsHelper.fetchApi(`${API_PREFIX}/${type}`, { method: "GET" });
+        return await settingsHelper.fetchApi(`${API_PREFIX}/${type}`, {
+            method: "GET",
+        });
     }
 
     async #updateTextColors() {
-        const [customTextboxColors, rawWildcardColor, wildcardHighlight, rawCommentColor, commentHighlight] = await Promise.all([
+        const [
+            customTextboxColors,
+            rawWildcardColor,
+            wildcardHighlight,
+            rawCommentColor,
+            commentHighlight,
+        ] = await Promise.all([
             settingsHelper.getSetting("Textbox Colors"),
             settingsHelper.getSetting("Wildcard Color"),
             settingsHelper.getSetting("Wildcard Highlighting"),
             settingsHelper.getSetting("Comment Color"),
             settingsHelper.getSetting("Comment Highlighting"),
         ]);
-        this.highlightType = await settingsHelper.getSetting("Textbox Highlight Type");
+        this.highlightType = await settingsHelper.getSetting(
+            "Textbox Highlight Type",
+        );
         this.colors = customTextboxColors
             .split("\n")
-            .map((color) => (color.charAt(0) === "#" ? hexToRgb(color) : color));
-        this.wildcardColor =
-            rawWildcardColor.charAt(0) === "#" ? hexToRgb(rawWildcardColor) : rawWildcardColor;
+            .map((color) => parseColor(color));
+            
+        this.wildcardColor = parseColor(rawWildcardColor);
         this.wildcardHighlight = wildcardHighlight;
-        this.commentColor =
-            rawCommentColor.charAt(0) === "#" ? hexToRgb(rawCommentColor) : rawCommentColor;
+
+        this.commentColor = parseColor(rawCommentColor);
         this.commentHighlight = commentHighlight;
     }
 }
