@@ -1,9 +1,7 @@
 import { settingsHelper } from "./settings.js";
-import { SettingsHelper } from "./settings/ComfyHelper.js";
 import { app } from "../../../scripts/app.js";
-import { api } from "../../../scripts/api.js";
-import { getFavorites, toggleFavourite } from "./favoriteManager.js";
-import { initializeContextMenuObserver } from "./contextMenuEnhancer.js";
+import { getFavorites, toggleFavourite } from "./favorites/manager.js";
+import { initializeContextMenuObserver } from "./favorites/contextMenu.js";
 
 app.registerExtension({
     name: "SyntaxHighlighting.ToggleFavorite",
@@ -28,15 +26,23 @@ app.registerExtension({
                         const displayValue = filename.split(".")[0];
 
                         menuItems.push({
-                            content: isFavourite ? `Unfavourite ${displayValue} ☆` : `Favourite ${displayValue} ★`,
+                            content: isFavourite
+                                ? `Unfavourite ${displayValue} ☆`
+                                : `Favourite ${displayValue} ★`,
                             disabled: false,
                             callback: () => {
-                                toggleFavourite(existingList, filename, "SyntaxHighlighting.favorites");
+                                toggleFavourite(
+                                    existingList,
+                                    filename,
+                                    "SyntaxHighlighting.favorites",
+                                );
                             },
                             originalValue: value,
                         });
                     } catch (error) {
-                        console.error(`Error processing value "${value}": ${error}`);
+                        console.error(
+                            `Error processing value "${value}": ${error}`,
+                        );
                     }
                 }
             });
