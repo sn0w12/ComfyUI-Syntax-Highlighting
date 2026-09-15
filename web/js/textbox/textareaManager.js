@@ -107,8 +107,8 @@ function setTextColors(inputEl, overlayEl) {
 export function enhanceTextarea(textarea) {
     if (
         enhancedTextareas.has(textarea) ||
-        textarea.closest(".settings-container") ||
-        textarea.closest(".form-input")
+        !textarea.closest(".dom-widget") ||
+        textarea.closest(".widget-markdown")
     ) {
         return;
     }
