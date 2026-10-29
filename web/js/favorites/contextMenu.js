@@ -199,34 +199,42 @@ async function observeContextMenu(existingList) {
     const favoriteColor = settings["Combo Highlight Color"];
     const brighterFavoriteColor = brightenColor(favoriteColor);
 
-    const style = document.createElement("style");
-    style.textContent = `
-        .preview-image {
-            position: absolute;
-            z-index: 2000;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.2s ease-in-out;
-        }
-        .preview-image.fade-in {
-            opacity: 1;
-        }
-        .preview-image.fade-out {
-            opacity: 0;
-        }
-        .litegraph.litecontextmenu.dark .litemenu-entry.litemenu-entry-custom {
-            background-color: ${favoriteColor} !important;
-            display: flex;
-            align-items: center;
-        }
-        .litemenu-entry:hover:not(.disabled):not(.separator).litemenu-entry-custom:hover {
-            background-color: ${brighterFavoriteColor} !important;
-        }
-    `;
-    document.head.appendChild(style);
+    const style = document.getElementById("comfy-ui-styles") || (() => {
+        const s = document.createElement("style");
+        s.id = "comfy-ui-styles";
+        document.head.appendChild(s);
+        return s;
+    })();
+
+    if (!style.dataset.contextMenuStylesAdded) {
+        style.textContent += `
+            .preview-image {
+                position: absolute;
+                z-index: 2000;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                pointer-events: none;
+                opacity: 0;
+                transition: opacity 0.2s ease-in-out;
+            }
+            .preview-image.fade-in {
+                opacity: 1;
+            }
+            .preview-image.fade-out {
+                opacity: 0;
+            }
+            .litegraph.litecontextmenu.dark .litemenu-entry.litemenu-entry-custom {
+                background-color: ${favoriteColor} !important;
+                display: flex;
+                align-items: center;
+            }
+            .litemenu-entry:hover:not(.disabled):not(.separator).litemenu-entry-custom:hover {
+                background-color: ${brighterFavoriteColor} !important;
+            }
+        `;
+        style.dataset.contextMenuStylesAdded = "true";
+    }
 
     let images;
     try {

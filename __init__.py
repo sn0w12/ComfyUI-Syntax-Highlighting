@@ -1,6 +1,8 @@
 import json
 import os
+import re
 from pathlib import Path
+from urllib.parse import quote
 import folder_paths
 from server import PromptServer
 from aiohttp import web
@@ -138,6 +140,8 @@ async def fetch_wiki_page(request):
     """
     Proxy endpoint to fetch Danbooru wiki pages.
     This avoids CSP violations by making the request server-side.
+    Uses the official JSON API instead of scraping HTML, which is
+    blocked by Cloudflare bot protection (HTTP 403) for Python clients.
     """
     tag = request.match_info["tag"]
     if not tag:
@@ -146,34 +150,88 @@ async def fetch_wiki_page(request):
     # Clean the tag similar to frontend logic
     tag = tag.strip()
 
-    url = f"https://danbooru.donmai.us/wiki_pages/{tag}"
+    api_url = "https://danbooru.donmai.us/wiki_pages.json"
+    headers = {
+        # Danbooru requires API consumers to identify themselves.
+        "User-Agent": "ComfyUI-Syntax-Highlighting/1.0",
+        "Accept": "application/json",
+    }
 
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.get(api_url, params={"search[title]": tag},
+                                   timeout=aiohttp.ClientTimeout(total=10)) as response:
                 if response.status != 200:
                     return web.json_response({
                         "success": False,
                         "error": {
                             "status": response.status,
                             "message": f"HTTP error! status: {response.status}",
-                            "url": url,
+                            "url": f"{api_url}?search[title]={quote(tag)}",
                         }
-                    }, status=response.status)
-
-                html_content = await response.text()
+                    })
+                pages = await response.json()
+                page = _find_wiki_page(pages, tag)
+                if page is None:
+                    return web.json_response({
+                        "success": False,
+                        "error": {
+                            "status": 404,
+                            "message": "Wiki page not found",
+                            "url": f"{api_url}?search[title]={quote(tag)}",
+                        }
+                    })
+                body = page.get("body") or ""
                 return web.json_response({
                     "success": True,
-                    "data": html_content
+                    "data": {
+                        "title": page.get("title"),
+                        "body": body,
+                        "description": _extract_wiki_description(body),
+                    }
                 })
     except aiohttp.ClientError as e:
-        return web.json_response({ "success": False, "error": { "message": str(e), "url": url, }
+        return web.json_response({ "success": False, "error": { "message": str(e), "url": api_url, }
         }, status=500)
     except Exception as e:
         return web.json_response({
             "success": False,
             "error": {
                 "message": f"Unexpected error: {str(e)}",
-                "url": url,
+                "url": api_url,
             }
         }, status=500)
+
+
+def _find_wiki_page(pages, tag):
+    """Prefer the exact title match, fall back to the first result."""
+    if not pages:
+        return None
+    lowered = tag.lower()
+    for page in pages:
+        if isinstance(page, dict) and str(page.get("title", "")).lower() == lowered:
+            return page
+    return pages[0] if isinstance(pages[0], dict) else None
+
+
+def _extract_wiki_description(body):
+    """Extract the first paragraph of a Danbooru DText wiki body."""
+    if not body:
+        return None
+    text = body.replace("\r\n", "\n").strip()
+    if not text:
+        return None
+    paragraphs = [p.strip() for p in text.split("\n\n")]
+    first = next((p for p in paragraphs if p), "")
+    if not first:
+        return None
+    # Unwrap DText wiki links: [[target|label]] -> label, [[target]] -> target
+    first = re.sub(r"\[\[([^|\]]+)\|([^\]]+)\]\]", r"\2", first)
+    first = re.sub(r"\[\[([^\]]+)\]\]", r"\1", first)
+    lines = []
+    for line in first.split("\n"):
+        line = re.sub(r"^(h[1-6]\.\s*|[*#\s]+)", "", line).strip()
+        if line:
+            lines.append(line)
+    description = " ".join(lines).strip()
+    return description or None

@@ -4,6 +4,10 @@ import { setOverlayStyle } from "./textbox/styleUtils.js";
 import { api } from "../../../scripts/api.js";
 import { settingsHelper } from "./settings.js";
 
+const sharedStyle = document.createElement("style");
+sharedStyle.id = "syntax-highlighting-custom-ui-styles";
+document.head.appendChild(sharedStyle);
+
 config.init();
 
 api.addEventListener("update_text_highlight", async () => {

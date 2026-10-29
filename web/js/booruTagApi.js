@@ -113,6 +113,71 @@ export class BooruApi {
         return element;
     }
 
+    extractDescriptionFromDText(body) {
+        if (!body) return null;
+        const text = body.replaceAll("\r\n", "\n").trim();
+        if (!text) return null;
+        const paragraphs = text.split("\n\n").map((p) => p.trim());
+        const first = paragraphs.find((p) => p) ?? "";
+        if (!first) return null;
+        // Unwrap DText wiki links: [[target|label]] -> label, [[target]] -> target
+        const unwrapped = first
+            .replace(/\[\[([^|\]]+)\|([^\]]+)\]\]/g, "$2")
+            .replace(/\[\[([^\]]+)\]\]/g, "$1");
+        const lines = unwrapped
+            .split("\n")
+            .map((line) => line.replace(/^(h[1-6]\.\s*|[*#\s]+)/, "").trim())
+            .filter((line) => line);
+        return lines.join(" ").trim() || null;
+    }
+
+    extractDescriptionFromHtml(html) {
+        const body = this.getElementById(html, "wiki-page-body");
+        return body?.querySelector("p")?.textContent || null;
+    }
+
+    async fetchDescriptionDirect(cleanedTag) {
+        // Direct browser request: the browser TLS fingerprint passes
+        // Cloudflare protection that blocks server-side Python clients.
+        const url = `${this.baseUrl}/wiki_pages.json?search[title]=${encodeURIComponent(cleanedTag)}`;
+        const response = await this.#fetch(url);
+        if (!response.success || !Array.isArray(response.data) || response.data.length === 0) {
+            return null;
+        }
+        const page =
+            response.data.find((p) => p?.title?.toLowerCase() === cleanedTag.toLowerCase()) ??
+            response.data[0];
+        return this.extractDescriptionFromDText(page?.body);
+    }
+
+    async fetchDescriptionViaProxy(cleanedTag) {
+        const url = `${this.proxyUrl}/${encodeURIComponent(cleanedTag)}`;
+        const response = await this.#fetch(url, {
+            responseType: "html",
+            useProxy: true,
+        });
+        if (!response.success) {
+            return null;
+        }
+        const data = response.data;
+        if (typeof data === "string") {
+            // Legacy proxy response returning raw HTML.
+            return this.extractDescriptionFromHtml(data);
+        }
+        if (data && typeof data === "object") {
+            return data.description ?? this.extractDescriptionFromDText(data.body);
+        }
+        return null;
+    }
+
+    async resolveDescription(cleanedTag) {
+        // Prefer the direct request, fall back to the server proxy
+        // (e.g. when CSP blocks cross-origin requests from the browser).
+        const direct = await this.fetchDescriptionDirect(cleanedTag);
+        if (direct !== null) return direct;
+        return this.fetchDescriptionViaProxy(cleanedTag);
+    }
+
     async getTagDescription(tag) {
         const cleanedTag = this.cleanTag(tag);
 
@@ -130,31 +195,19 @@ export class BooruApi {
                 // Revalidate in background
                 (async () => {
                     try {
-                        const url = `${this.proxyUrl}/${cleanedTag}`;
-                        const response = await this.#fetch(url, {
-                            responseType: "html",
-                            useProxy: true,
-                        });
-                        if (response.success) {
-                            const body = this.getElementById(
-                                response.data,
-                                "wiki-page-body"
-                            );
-                            const newDescription =
-                                body?.querySelector("p")?.textContent || null;
-                            // Update cache with fresh data
-                            this.cache[cleanedTag] = {
-                                description: newDescription,
-                                timestamp: Date.now(),
-                            };
-                            this.saveCache();
-                            // Trim cache if it exceeds max size
-                            if (
-                                Object.keys(this.cache).length >
-                                this.MAX_CACHE_SIZE
-                            ) {
-                                this.trimCache();
-                            }
+                        const newDescription = await this.resolveDescription(cleanedTag);
+                        // Update cache with fresh data
+                        this.cache[cleanedTag] = {
+                            description: newDescription,
+                            timestamp: Date.now(),
+                        };
+                        this.saveCache();
+                        // Trim cache if it exceeds max size
+                        if (
+                            Object.keys(this.cache).length >
+                            this.MAX_CACHE_SIZE
+                        ) {
+                            this.trimCache();
                         }
                     } catch (e) {
                         console.warn("Background revalidation failed", e);
@@ -165,16 +218,7 @@ export class BooruApi {
         }
 
         // No cache: fetch fresh
-        const url = `${this.proxyUrl}/${cleanedTag}`;
-        const response = await this.#fetch(url, {
-            responseType: "html",
-            useProxy: true,
-        });
-        if (!response.success) {
-            return null;
-        }
-        const body = this.getElementById(response.data, "wiki-page-body");
-        const description = body?.querySelector("p")?.textContent || null;
+        const description = await this.resolveDescription(cleanedTag);
 
         // Cache the result
         this.cache[cleanedTag] = { description, timestamp: Date.now() };

@@ -4,6 +4,9 @@ import { settingsHelper } from "../settings.js";
 const booruApi = new BooruApi();
 let currentTooltipRequest = null;
 
+const TAG_WIKI_BASE = "https://danbooru.donmai.us/wiki_pages/";
+const resolvedTags = new Set();
+
 export async function showTagTooltip(element, tag) {
     const requestId = Symbol("tooltip-request");
     currentTooltipRequest = requestId;
@@ -43,7 +46,12 @@ export async function showTagTooltip(element, tag) {
         }
     }, 100);
 
-    const description = (await booruApi.getTagDescription(tag)) ?? "No description available.";
+    const rawDescription = await booruApi.getTagDescription(tag);
+    const description = rawDescription ?? "No description available.";
+
+    if (rawDescription !== null) {
+        resolvedTags.add(booruApi.cleanTag(tag));
+    }
 
     if (currentTooltipRequest !== requestId) {
         clearTimeout(loadingTimeout);
@@ -108,6 +116,21 @@ export async function addTooltips(textarea) {
     });
 
     textarea.addEventListener("mousemove", (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            textarea.style.pointerEvents = "none";
+            const el = document.elementFromPoint(e.clientX, e.clientY);
+            textarea.style.pointerEvents = "auto";
+            const tagSpan = el?.closest(".tag-span");
+            if (tagSpan) {
+                const tag = booruApi.cleanTag(tagSpan.dataset.tag);
+                textarea.style.cursor = resolvedTags.has(tag) ? "pointer" : "";
+            } else {
+                textarea.style.cursor = "";
+            }
+        } else {
+            textarea.style.cursor = "";
+        }
+
         if (isTyping) return;
 
         if (tooltipTimeout) {
@@ -135,10 +158,27 @@ export async function addTooltips(textarea) {
     });
 
     textarea.addEventListener("mouseout", () => {
+        textarea.style.cursor = "";
         if (tooltipTimeout) {
             clearTimeout(tooltipTimeout);
         }
         hideTagTooltip();
         currentTooltipTag = null;
+    });
+
+    textarea.addEventListener("click", (e) => {
+        if (!e.ctrlKey && !e.metaKey) return;
+
+        textarea.style.pointerEvents = "none";
+        const elementBelow = document.elementFromPoint(e.clientX, e.clientY);
+        textarea.style.pointerEvents = "auto";
+
+        const tagSpan = elementBelow?.closest(".tag-span");
+        if (tagSpan) {
+            const tag = booruApi.cleanTag(tagSpan.dataset.tag);
+            if (!resolvedTags.has(tag)) return;
+            const newWindow = window.open(TAG_WIKI_BASE + encodeURIComponent(tag), "_blank");
+            if (newWindow) newWindow.focus();
+        }
     });
 }
