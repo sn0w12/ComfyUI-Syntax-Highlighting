@@ -2,6 +2,7 @@ import { settingsHelper } from "./settings.js";
 import { app } from "../../../scripts/app.js";
 import { getFavorites, toggleFavourite } from "./favorites/manager.js";
 import { initializeContextMenuObserver } from "./favorites/contextMenu.js";
+import { resolveComboFavorite } from "./favorites/publicApi.js";
 
 app.registerExtension({
     name: "SyntaxHighlighting.ToggleFavorite",
@@ -16,32 +17,34 @@ app.registerExtension({
 
             node.widgets?.forEach((widget) => {
                 if (widget.type === "combo") {
-                    const value = widget.value;
-                    if (value.has_submenu) return;
-                    const isFavourite = existingList.includes(value);
-
+                    if (
+                        widget.value &&
+                        typeof widget.value === "object" &&
+                        widget.value.has_submenu
+                    ) {
+                        return;
+                    }
                     try {
-                        const pathArray = value.split("\\");
-                        const filename = pathArray[pathArray.length - 1];
-                        const displayValue = filename.split(".")[0];
+                        const { key, label } = resolveComboFavorite(widget);
+                        const isFavourite = existingList.includes(key);
 
                         menuItems.push({
                             content: isFavourite
-                                ? `Unfavourite ${displayValue} ☆`
-                                : `Favourite ${displayValue} ★`,
+                                ? `Unfavourite ${label} ☆`
+                                : `Favourite ${label} ★`,
                             disabled: false,
                             callback: () => {
                                 toggleFavourite(
                                     existingList,
-                                    filename,
+                                    key,
                                     "SyntaxHighlighting.favorites",
                                 );
                             },
-                            originalValue: value,
+                            favoriteKey: key,
                         });
                     } catch (error) {
                         console.error(
-                            `Error processing value "${value}": ${error}`,
+                            `Error processing value "${widget.value}": ${error}`,
                         );
                     }
                 }
@@ -50,8 +53,8 @@ app.registerExtension({
             if (menuItems.length === 0) return options;
 
             menuItems.sort((a, b) => {
-                const aIndex = existingList.indexOf(a.originalValue);
-                const bIndex = existingList.indexOf(b.originalValue);
+                const aIndex = existingList.indexOf(a.favoriteKey);
+                const bIndex = existingList.indexOf(b.favoriteKey);
                 if (aIndex === -1 && bIndex === -1) return 0;
                 if (aIndex === -1) return 1;
                 if (bIndex === -1) return -1;

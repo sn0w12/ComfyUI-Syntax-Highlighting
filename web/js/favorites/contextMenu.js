@@ -73,6 +73,52 @@ function hasAnyFavoritedChildren(parsed, existingList) {
     return parsed.children.some((child) => hasAnyFavoritedChildren(child, existingList));
 }
 
+function collectMenuItemFavorites(item) {
+    if (!item || typeof item !== "object") return null;
+
+    let hasApi = false;
+    const keys = new Set();
+    let label = null;
+
+    const visit = (node) => {
+        if (!node || typeof node !== "object") return;
+
+        if (typeof node.getFavoriteInfo === "function") {
+            try {
+                const result = node.getFavoriteInfo();
+                hasApi = true;
+                if (typeof result === "string") {
+                    keys.add(result);
+                    if (label === null) label = result;
+                } else if (result && typeof result === "object") {
+                    if (typeof result.key === "string") keys.add(result.key);
+                    if (Array.isArray(result.keys)) {
+                        for (const key of result.keys) {
+                            if (typeof key === "string") keys.add(key);
+                        }
+                    }
+                    if (typeof result.label === "string") {
+                        label = label ?? result.label;
+                    } else if (label === null && typeof result.key === "string") {
+                        label = result.key;
+                    }
+                }
+            } catch (error) {
+                console.warn("Could not read menu favorite info", error);
+            }
+        } else if (label === null && typeof node.content === "string") {
+            label = node.content;
+        }
+
+        if (node.submenu?.options) {
+            for (const child of node.submenu.options) visit(child);
+        }
+    };
+
+    visit(item);
+    return hasApi ? { keys: [...keys], label } : null;
+}
+
 function slugify(text) {
     return text.toLowerCase().replace(/\W+/g, "_").replace(/^_+|_+$/g, "");
 }
@@ -115,20 +161,28 @@ async function addStarsToFavourited(menuEntries, existingList, previewImages, se
     });
 
     entriesToSort.forEach((entry) => {
-        let value = entry.getAttribute("data-value");
-        let filename = extractFilenameFromValue(value);
-        let isStarred = false;
+        const favorite = collectMenuItemFavorites(entry.value);
+        let filename;
+        let isStarred;
 
-        if (value && value.includes("::")) {
-            const parsed = parseNestedMenuItem(value);
-            isStarred = hasAnyFavoritedChildren(parsed, existingList);
+        if (favorite) {
+            filename = favorite.label;
+            isStarred = favorite.keys.some((key) => existingList.includes(key));
         } else {
-            isStarred = existingList.includes(filename);
+            const value = entry.getAttribute("data-value");
+            filename = extractFilenameFromValue(value);
+            if (value && value.includes("::")) {
+                const parsed = parseNestedMenuItem(value);
+                isStarred = hasAnyFavoritedChildren(parsed, existingList);
+            } else {
+                isStarred = existingList.includes(filename);
+            }
         }
 
         entry.addEventListener("mouseover", () => {
             removeAllPreviewImages();
             hoverTimer = setTimeout(() => {
+                if (!filename) return;
                 const imageFileName = slugify(filename.split(".")[0]);
                 const imageData = previewImages.find((img) => slugify(img.filename) === imageFileName);
                 if (imageData) {

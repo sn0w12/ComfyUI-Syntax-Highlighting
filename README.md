@@ -25,6 +25,35 @@ You can also use the `Save Preview Image` node to save a generated image to the 
 
 To favorite the currently selected combo value, right click the node and click `favorite [name]`, if there are several combo inputs, it will be a submenu with all favorite options inside it.
 
+## Combo favorite API
+
+Combo widgets can provide a favorite key and label that differ from the raw widget value:
+
+```js
+widget.options.getFavoriteInfo = (value, widget) => ({
+    key: "favorite key",
+    label: "Display name",
+});
+```
+
+Returning a string uses it as both the key and label. Without a resolver, the last segment of a backslash-separated value is used.
+
+Context menu items can provide `getFavoriteInfo()`:
+
+```js
+const item = {
+    content: "Character",
+    getFavoriteInfo: () => ({ key: "character name", label: "Character" }),
+};
+```
+
+- `{ key, label }` marks a selectable item.
+- `{ label }` marks a group; descendant keys are collected from `submenu.options`.
+- `{ keys: [...] }` provides descendant keys directly.
+- Returning a string uses it as both key and label.
+
+The `toString()` `parent::{child|child}` format is still supported as a fallback.
+
 ## Settings
 
 ### Textbox
